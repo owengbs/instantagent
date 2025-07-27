@@ -11,6 +11,7 @@ import logging
 from typing import Optional, Callable, Dict, Any, AsyncGenerator
 from enum import Enum
 import io
+from ..utils.logging_decorator import log_api_call
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,9 @@ class QwenTTSRealtimeService:
         self.base_url = "wss://dashscope.aliyuncs.com/api-ws/v1/realtime?model=qwen-tts-realtime"
         self.api_key = "sk-ff980442223b45868202e5cb35724bb1"
         self.default_voice = "Cherry"
-        self.sample_rate = 24000
+        self.sample_rate = 24000  # Qwen TTS Realtime只支持24kHz
         
+    @log_api_call("Qwen TTS Realtime", "qwen")
     async def synthesize_stream(
         self, 
         text: str, 
@@ -148,6 +150,7 @@ class QwenTTSRealtimeService:
             logger.error(f"Realtime语音合成失败: {e}")
             raise
     
+    @log_api_call("Qwen TTS Complete", "qwen")
     async def synthesize_complete(self, text: str, voice: str = None) -> bytes:
         """
         完整语音合成（兼容性方法）

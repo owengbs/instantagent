@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Volume2, VolumeX, Send, Settings, Keyboard } from 'lucide-react'
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
+import { useQwenSpeechRecognition } from '../hooks/useQwenSpeechRecognition'
 import { useQwenTTS } from '../hooks/useQwenTTS'
 import { useChat } from '../contexts/ChatContext'
 import AudioVisualizer from './AudioVisualizer.tsx'
@@ -37,26 +37,40 @@ const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { setOnNewAIResponse } = useChat()
 
-  // 语音识别 - 使用和测试页面相同的简化配置
+  // 语音识别 - 使用Qwen ASR
   const {
     isSupported: recognitionSupported,
     isListening,
+    transcript,
     finalTranscript,
-    interimTranscript,
     error: recognitionError,
     startListening,
     stopListening,
     resetTranscript
-  } = useSpeechRecognition({
+  } = useQwenSpeechRecognition({
     language: 'zh-CN',
-    continuous: false,
-    interimResults: true
+    model: 'paraformer-realtime-v2',
+    onResult: (text, isFinal) => {
+      console.log('🎤 VoiceChatInput 收到ASR结果:', { text, isFinal })
+      
+      if (isFinal && text && text.trim()) {
+        console.log('🎤 VoiceChatInput Qwen ASR最终结果:', text)
+        // 最终结果，自动发送给大模型
+        handleVoiceInput(text.trim())
+      } else if (text && text.trim()) {
+        // 部分结果，只更新显示，不发送
+        console.log('🎤 VoiceChatInput Qwen ASR部分结果:', text)
+      }
+    },
+    onError: (error) => {
+      console.error('❌ VoiceChatInput Qwen ASR错误:', error)
+    }
   })
 
   // 语音结果处理状态
   const [lastProcessedTranscript, setLastProcessedTranscript] = useState('')
 
-  // 处理语音识别结果 - 监听finalTranscript变化
+  // 处理语音识别结果 - 现在通过onResult回调处理，这里保留用于兼容性
   useEffect(() => {
     if (finalTranscript && finalTranscript.trim() && finalTranscript !== lastProcessedTranscript) {
       console.log('🎤 VoiceChatInput 收到最终语音结果:', finalTranscript)
@@ -344,7 +358,7 @@ const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
     }
   }
 
-  const currentTranscript = finalTranscript + interimTranscript
+          const currentTranscript = finalTranscript + transcript
 
   // 渲染前的最终状态检查
   console.log('🖼️ VoiceChatInput 即将渲染:', {
@@ -409,7 +423,7 @@ const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
                 <span className="text-gray-500">识别结果：</span>
                 <span className="text-gray-800 ml-2">
                   {finalTranscript}
-                  <span className="text-gray-400">{interimTranscript}</span>
+                                          <span className="text-gray-400">{transcript}</span>
                 </span>
               </div>
             )}

@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from ..core.config import settings
 from ..knowledge.knowledge_base import knowledge_base
+from ..utils.logging_decorator import log_api_call
 
 # 设置详细日志
 logger = logging.getLogger(__name__)
@@ -116,6 +117,7 @@ class CustomerServiceAgent:
             print(f"知识检索失败: {e}")
             return {"retrieved_docs": []}
     
+    @log_api_call("Qwen LLM Chat", "qwen")
     async def _generate_response_node(self, state: ConversationState) -> Dict[str, Any]:
         """生成回复节点"""
         try:
@@ -302,6 +304,7 @@ class CustomerServiceAgent:
             print(f"清除对话历史失败: {e}")
             return False
     
+    @log_api_call("Qwen LLM Stream", "qwen")
     async def chat_stream(self, message: str, user_id: str = "default", session_id: str = "default"):
         """处理用户消息并返回流式回复生成器"""
         try:

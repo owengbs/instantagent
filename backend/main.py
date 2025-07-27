@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings, ensure_directories
+from app.core.logging_config import setup_logging
 from app.knowledge.knowledge_base import knowledge_base
 from app.agents.customer_agent import customer_agent
 from app.api.chat import router as chat_router
@@ -26,6 +27,9 @@ async def lifespan(app: FastAPI):
     print("🚀 启动智能交易客服Agent...")
     
     try:
+        # 设置日志配置
+        setup_logging()
+        
         # 确保目录存在
         ensure_directories()
         print("✅ 目录检查完成")
