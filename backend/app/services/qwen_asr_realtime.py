@@ -146,6 +146,11 @@ class QwenASRRealtimeService:
     """
     Qwen实时语音识别服务
     使用官方dashscope SDK
+    
+    启用心跳机制防止长时间静音导致连接超时：
+    - heartbeat=True: 在持续发送静音音频的情况下，保持与服务端的连接不中断
+    - heartbeat=False: 即使持续发送静音音频，连接也将在60秒后因超时而断开
+    - 该参数仅在模型为v2及更高版本时生效
     """
     
     def __init__(self):
@@ -190,7 +195,7 @@ class QwenASRRealtimeService:
         if not model:
             model = self.default_model
             
-        logger.info(f"🎤 开始实时语音识别: model={model}, input_sample_rate={input_sample_rate}, language={language}")
+        logger.info(f"🎤 开始实时语音识别: model={model}, input_sample_rate={input_sample_rate}, language={language}, heartbeat=True")
         
         # 用于收集结果的列表
         results = []
@@ -206,14 +211,16 @@ class QwenASRRealtimeService:
             # 创建回调处理器
             callback = QwenASRCallback(result_callback)
             
-            # 创建识别实例，添加语言参数
+            # 创建识别实例，添加语言参数和心跳机制
             recognition = Recognition(
                 model=model,
                 format=self.format,
                 sample_rate=self.sample_rate,
                 callback=callback,
                 # 添加语言参数
-                language=language if language else "zh-CN"
+                language=language if language else "zh-CN",
+                # 启用心跳机制，防止长时间静音导致连接超时
+                heartbeat=True
             )
             
             logger.info("🚀 启动Qwen ASR识别...")
@@ -324,12 +331,14 @@ class QwenASRRealtimeService:
             
             callback = QwenASRCallback(on_result)
             
-            # 创建识别实例
+            # 创建识别实例，启用心跳机制
             recognition = Recognition(
                 model=model,
                 format=self.format,
                 sample_rate=self.sample_rate,
-                callback=callback
+                callback=callback,
+                # 启用心跳机制，防止长时间静音导致连接超时
+                heartbeat=True
             )
             
             logger.info("🚀 启动文件识别...")

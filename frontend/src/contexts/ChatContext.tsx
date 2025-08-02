@@ -85,6 +85,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   // 语音回调引用
   const onNewAIResponseRef = useRef<((response: string) => void) | null>(null)
+  
+  // 语音队列管理
+  const speechQueueRef = useRef<Array<{content: string, agent?: string}>>([])
+  const isSpeakingRef = useRef<boolean>(false)
 
   // 连接 WebSocket
   const connect = useCallback(() => {
@@ -205,13 +209,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               })
               
-              // 触发语音回调
-              if (onNewAIResponseRef.current && data.content) {
-                console.log('🔊 触发多智能体语音合成回调:', {
-                  agent: data.agent_name,
-                  messageLength: data.content.length
-                })
-                onNewAIResponseRef.current(data.content)
+              // 添加到语音队列而不是直接播放
+              if (data.content) {
+                addToSpeechQueue(data.content, data.agent_name)
               }
               break
             
@@ -323,6 +323,42 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     storage.set('chat_preferences', updated)
   }, [preferences])
 
+  // 处理语音队列
+  const processSpeechQueue = useCallback(() => {
+    if (isSpeakingRef.current || speechQueueRef.current.length === 0) {
+      return
+    }
+    
+    const nextSpeech = speechQueueRef.current.shift()
+    if (nextSpeech && onNewAIResponseRef.current) {
+      isSpeakingRef.current = true
+      console.log('🎵 开始播放语音队列:', {
+        agent: nextSpeech.agent || '未知',
+        contentLength: nextSpeech.content.length,
+        queueLength: speechQueueRef.current.length
+      })
+      onNewAIResponseRef.current(nextSpeech.content)
+    }
+  }, [])
+  
+  // 添加语音到队列
+  const addToSpeechQueue = useCallback((content: string, agent?: string) => {
+    speechQueueRef.current.push({ content, agent })
+    console.log('📝 添加到语音队列:', {
+      agent: agent || '未知',
+      contentLength: content.length,
+      queueLength: speechQueueRef.current.length
+    })
+    processSpeechQueue()
+  }, [processSpeechQueue])
+  
+  // 语音播放完成回调
+  const onSpeechEnd = useCallback(() => {
+    isSpeakingRef.current = false
+    console.log('✅ 语音播放完成，继续处理队列')
+    processSpeechQueue()
+  }, [processSpeechQueue])
+  
   // 设置新AI回复的回调
   const setOnNewAIResponse = useCallback((callback: (response: string) => void) => {
     onNewAIResponseRef.current = callback
@@ -359,7 +395,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     preferences,
     updatePreferences,
     onNewAIResponse: onNewAIResponseRef.current || undefined,
-    setOnNewAIResponse
+    setOnNewAIResponse,
+    onSpeechEnd
   }
 
   return (

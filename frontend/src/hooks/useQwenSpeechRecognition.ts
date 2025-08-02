@@ -43,6 +43,15 @@ class AudioRecorder {
   
   // 采样率警告标志
   private sampleRateWarningShown = false
+  
+  // 静音音频发送机制
+  private silenceInterval: NodeJS.Timeout | null = null
+  private readonly silenceIntervalMs = 1000 // 每1秒发送一次静音音频
+  
+  // 音频活动检测
+  private lastAudioActivity = Date.now()
+  private readonly activityThreshold = 0.01 // 音频能量阈值
+  private readonly silenceTimeoutMs = 2000 // 2秒无活动后开始发送静音
 
   // 音频重采样函数
   private resampleAudio(inputData: Float32Array, fromRate: number, toRate: number): Float32Array {
@@ -72,6 +81,51 @@ class AudioRecorder {
     this.sampleRate = sampleRate
     this.onAudioData = onAudioData
   }
+  
+  // 生成静音音频数据
+  private generateSilenceAudio(durationMs: number): Int16Array {
+    const sampleCount = Math.floor((this.sampleRate * durationMs) / 1000)
+    return new Int16Array(sampleCount) // 默认全为0，即静音
+  }
+  
+  // 检测音频能量（判断是否有实际声音）
+  private detectAudioActivity(audioData: Float32Array): boolean {
+    let energy = 0
+    for (let i = 0; i < audioData.length; i++) {
+      energy += audioData[i] * audioData[i]
+    }
+    energy = Math.sqrt(energy / audioData.length) // RMS能量
+    return energy > this.activityThreshold
+  }
+  
+  // 开始发送静音音频（保持连接）
+  private startSilenceKeepAlive(): void {
+    if (this.silenceInterval) {
+      return
+    }
+    
+    console.log('🔇 开始静音音频保持连接监控')
+    this.silenceInterval = setInterval(() => {
+      const now = Date.now()
+      const timeSinceLastActivity = now - this.lastAudioActivity
+      
+      // 只有在超过静音阈值时间且没有音频活动时才发送静音
+      if (timeSinceLastActivity > this.silenceTimeoutMs) {
+        const silenceData = this.generateSilenceAudio(100) // 100ms静音
+        this.onAudioData(silenceData)
+        console.log(`🔇 发送静音音频保持连接 (${Math.round(timeSinceLastActivity/1000)}s无活动)`)
+      }
+    }, this.silenceIntervalMs)
+  }
+  
+  // 停止发送静音音频
+  private stopSilenceKeepAlive(): void {
+    if (this.silenceInterval) {
+      clearInterval(this.silenceInterval)
+      this.silenceInterval = null
+      console.log('🔇 停止发送静音音频')
+    }
+  }
 
   async start(): Promise<void> {
     try {
@@ -99,6 +153,11 @@ class AudioRecorder {
         
         const inputBuffer = event.inputBuffer
         const inputData = inputBuffer.getChannelData(0)
+        
+        // 检测音频活动
+        if (this.detectAudioActivity(inputData)) {
+          this.lastAudioActivity = Date.now()
+        }
         
         // 检查采样率并重采样
         let processedData = inputData
@@ -155,6 +214,12 @@ class AudioRecorder {
       
       this.isRecording = true
       
+      // 重置活动时间戳
+      this.lastAudioActivity = Date.now()
+      
+      // 开始静音音频保持连接
+      this.startSilenceKeepAlive()
+      
     } catch (error) {
       throw new Error(`启动音频录制失败: ${error}`)
     }
@@ -162,6 +227,9 @@ class AudioRecorder {
 
   stop(): void {
     this.isRecording = false
+    
+    // 停止静音音频发送
+    this.stopSilenceKeepAlive()
     
     // 清空缓冲区
     this.pcmBuffer = []

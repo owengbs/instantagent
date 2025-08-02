@@ -103,6 +103,7 @@ export interface ChatContextType {
   updatePreferences: (preferences: Partial<UserPreferences>) => void
   onNewAIResponse?: (response: string) => void
   setOnNewAIResponse: (callback: (response: string) => void) => void
+  onSpeechEnd: () => void
 }
 
 // 组件props类型

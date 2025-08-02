@@ -35,7 +35,7 @@ const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
   })
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const { setOnNewAIResponse } = useChat()
+  const { setOnNewAIResponse, onSpeechEnd } = useChat()
 
   // 语音识别 - 使用Qwen ASR
   const {
@@ -108,7 +108,11 @@ const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
   } = useQwenTTS({
     voice: speechSettings.selectedVoice || 'Cherry',
     onStart: () => console.log('🎵 Qwen-TTS 语音合成开始'),
-    onEnd: () => console.log('✅ Qwen-TTS 语音合成结束'),
+    onEnd: () => {
+      console.log('✅ Qwen-TTS 语音合成结束')
+      // 通知语音队列可以播放下一个
+      onSpeechEnd()
+    },
     onError: (error) => console.error('❌ Qwen-TTS 错误:', error)
   })
 
