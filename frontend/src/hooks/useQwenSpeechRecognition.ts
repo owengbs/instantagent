@@ -21,7 +21,6 @@ interface QwenSpeechRecognitionReturn {
   startListening: () => Promise<void>
   stopListening: () => void
   resetTranscript: () => void
-  testSilenceDetection: () => void // 添加测试函数
 }
 
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
@@ -701,24 +700,7 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
     setFinalTranscript('')
   }, [])
 
-  // 手动测试静音检测（仅用于调试）
-  const testSilenceDetection = useCallback(() => {
-    console.log('🧪 手动测试静音检测...')
-    console.log('📝 当前识别结果:', { transcript, finalTranscript })
-    
-    // 模拟3秒静音检测触发
-    const currentText = transcript || finalTranscript
-    if (currentText && currentText.trim()) {
-      console.log('✅ 手动触发发送给大模型:', currentText)
-      sendMessage(currentText).then(() => {
-        console.log('✅ 手动测试：语音识别结果已发送给大模型')
-      }).catch((error) => {
-        console.error('❌ 手动测试：发送给大模型失败:', error)
-      })
-    } else {
-      console.log('⚠️ 手动测试：没有识别到有效文本')
-    }
-  }, [transcript, finalTranscript, sendMessage])
+
 
   // 组件卸载时清理
   useEffect(() => {
@@ -754,7 +736,6 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
     error,
     startListening,
     stopListening,
-    resetTranscript,
-    testSilenceDetection // 添加测试函数
+    resetTranscript
   }
 } 

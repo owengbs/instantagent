@@ -7,6 +7,7 @@ import uuid
 import logging
 import asyncio
 import re
+import queue
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
@@ -35,6 +36,9 @@ class RealtimeChatManager:
         self.active_connections: Dict[str, WebSocket] = {}
         self.user_sessions: Dict[str, Dict] = {}
         self.asr_tasks: Dict[str, asyncio.Task] = {}  # ASR任务管理
+        # 添加结果队列用于线程间通信
+        self.result_queues: Dict[str, queue.Queue] = {}
+        self.result_processors: Dict[str, asyncio.Task] = {}
     
     async def connect(self, websocket: WebSocket, client_id: str):
         """建立连接"""
@@ -51,6 +55,7 @@ class RealtimeChatManager:
             "speech_buffer": "",  # 语音识别缓冲区
             "last_speech_time": None
         }
+        self.result_queues[client_id] = queue.Queue()
         logger.info(f"🔌 实时对话客户端连接: {client_id}")
     
     def disconnect(self, client_id: str):
@@ -60,10 +65,16 @@ class RealtimeChatManager:
             self.asr_tasks[client_id].cancel()
             del self.asr_tasks[client_id]
         
+        if client_id in self.result_processors:
+            self.result_processors[client_id].cancel()
+            del self.result_processors[client_id]
+        
         if client_id in self.active_connections:
             del self.active_connections[client_id]
         if client_id in self.user_sessions:
             del self.user_sessions[client_id]
+        if client_id in self.result_queues:
+            del self.result_queues[client_id]
         logger.info(f"🔌 实时对话客户端断开: {client_id}")
     
     async def send_message(self, client_id: str, message: dict):
@@ -92,6 +103,9 @@ class RealtimeChatManager:
             self._handle_speech_recognition(client_id)
         )
         
+        # 启动结果处理器
+        self.result_processors[client_id] = asyncio.create_task(self._process_asr_results(client_id))
+        
         logger.info(f"🎤 开始语音识别: {client_id}")
         await self.send_message(client_id, {
             "type": "asr_start",
@@ -113,11 +127,52 @@ class RealtimeChatManager:
             "timestamp": datetime.now().isoformat()
         })
     
+    async def _process_asr_results(self, client_id: str):
+        """处理ASR结果队列"""
+        try:
+            result_queue = self.result_queues[client_id]
+            session = self.user_sessions.get(client_id, {})
+            
+            while client_id in self.result_queues:
+                try:
+                    # 从队列中获取结果（非阻塞）
+                    result = result_queue.get_nowait()
+                    text, is_final = result
+                    
+                    if text.strip():
+                        if is_final:
+                            # 最终识别结果，触发对话
+                            session["speech_buffer"] = ""
+                            logger.info(f"🎤 ASR最终结果: '{text}'")
+                            await self.process_streaming_chat(client_id, text)
+                        else:
+                            # 部分识别结果，更新缓冲区
+                            session["speech_buffer"] = text
+                            logger.debug(f"🎤 ASR部分结果: '{text}'")
+                            await self.send_message(client_id, {
+                                "type": "asr_partial",
+                                "text": text,
+                                "timestamp": datetime.now().isoformat()
+                            })
+                    
+                except queue.Empty:
+                    # 队列为空，等待一小段时间
+                    await asyncio.sleep(0.1)
+                except Exception as e:
+                    logger.error(f"❌ 处理ASR结果失败: client_id={client_id}, error={e}")
+                    await asyncio.sleep(0.1)
+                    
+        except asyncio.CancelledError:
+            logger.info(f"🛑 ASR结果处理器已取消: client_id={client_id}")
+        except Exception as e:
+            logger.error(f"❌ ASR结果处理器错误: client_id={client_id}, error={e}")
+
     async def _handle_speech_recognition(self, client_id: str):
         """处理语音识别"""
         try:
             session = self.user_sessions.get(client_id, {})
             model = session.get("asr_model", "paraformer-realtime-v2")
+            result_queue = self.result_queues[client_id]
             
             # 创建音频队列
             audio_queue = asyncio.Queue()
@@ -136,29 +191,20 @@ class RealtimeChatManager:
                     except asyncio.CancelledError:
                         break
             
-            # 处理ASR结果
-            async def handle_asr_result(text: str, is_final: bool):
-                if text.strip():
-                    if is_final:
-                        # 最终识别结果，触发对话
-                        session["speech_buffer"] = ""
-                        logger.info(f"🎤 ASR最终结果: '{text}'")
-                        await self.process_streaming_chat(client_id, text)
-                    else:
-                        # 部分识别结果，更新缓冲区
-                        session["speech_buffer"] = text
-                        logger.debug(f"🎤 ASR部分结果: '{text}'")
-                        await self.send_message(client_id, {
-                            "type": "asr_partial",
-                            "text": text,
-                            "timestamp": datetime.now().isoformat()
-                        })
+            def result_callback(text: str, is_final: bool):
+                # 将结果放入队列，供异步处理器处理
+                try:
+                    result_queue.put_nowait((text, is_final))
+                except queue.Full:
+                    logger.warning(f"⚠️ 结果队列已满: client_id={client_id}")
+                except Exception as e:
+                    logger.error(f"❌ 添加结果到队列失败: client_id={client_id}, error={e}")
             
             # 调用ASR服务
             async for result in qwen_asr_realtime.recognize_stream(
                 audio_stream(), 
                 model,
-                on_result=handle_asr_result
+                on_result=result_callback
             ):
                 pass
                 

@@ -16,7 +16,7 @@ from app.agents.customer_agent import customer_agent
 from app.api.chat import router as chat_router
 from app.api.tts import router as tts_router
 from app.api.realtime_chat import router as realtime_router
-from app.api.asr import router as asr_router
+
 from app.api.asr_websocket import router as asr_ws_router
 
 
@@ -75,7 +75,7 @@ app.add_middleware(
 app.include_router(chat_router, prefix="/api")
 app.include_router(tts_router, prefix="/api")
 app.include_router(realtime_router, prefix="/api")
-app.include_router(asr_router, prefix="/api")
+
 app.include_router(asr_ws_router, prefix="/api")
 
 
