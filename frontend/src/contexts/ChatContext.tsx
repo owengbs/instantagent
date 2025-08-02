@@ -116,6 +116,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       wsRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
+          console.log(`📨 WebSocket收到原始消息: type=${data.type}, agent_id=${data.agent_id || 'N/A'}, order=${data.order || 'N/A'}`)
           
           switch (data.type) {
             case 'welcome':
@@ -188,9 +189,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             case 'multi_agent_response':
               console.log('🤖 收到多智能体回复:', data)
               console.log(`📊 智能体信息: ID=${data.agent_id}, Name=${data.agent_name}, Order=${data.order}`)
+              console.log(`🔢 当前消息总数: ${state.messages.length}`)
               
-              // 停止打字指示器
-              dispatch({ type: 'SET_TYPING', payload: false })
+              // 只有收到第一个回复时停止打字指示器
+              if (data.order === 1) {
+                dispatch({ type: 'SET_TYPING', payload: false })
+                console.log('⏹️ 停止打字指示器 (第一个回复)')
+              }
               
               dispatch({
                 type: 'ADD_MESSAGE',
@@ -348,6 +353,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           chat_mode: "multi_agent"
         }
         console.log('📤 发送 WebSocket 消息:', messageData)
+        console.log(`🆔 使用的 SessionID: ${state.sessionId}`)
+        console.log(`🔗 WebSocket URL: ${wsRef.current?.url}`)
         wsRef.current.send(JSON.stringify(messageData))
         console.log('✅ WebSocket 消息发送成功')
       } catch (error) {
