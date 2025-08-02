@@ -12,7 +12,13 @@ from datetime import datetime
 from .base_agent import BaseAgent
 from .buffett_agent import BuffettAgent
 from .soros_agent import SorosAgent
+from .munger_agent import MungerAgent
 from .topic_analyzer import topic_analyzer, AnalysisResult
+from .conversation_manager import (
+    complexity_analyzer, 
+    conversation_mode_manager, 
+    personalization_manager
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +55,16 @@ class AgentManager:
                 'enabled': True
             })
             logger.info("✅ 索罗斯智能体初始化成功")
+            
+            # 创建芒格智能体
+            munger_agent = MungerAgent()
+            self.register_agent('munger', munger_agent, {
+                'name': '查理·芒格',
+                'description': '多元思维模型专家',
+                'priority': 1,
+                'enabled': True
+            })
+            logger.info("✅ 芒格智能体初始化成功")
             
         except Exception as e:
             logger.error(f"❌ 智能体初始化失败: {e}")
@@ -174,7 +190,7 @@ class AgentManager:
         user_message: str, 
         session_id: str,
         user_id: str,
-        max_participants: int = 2
+        max_participants: int = 3  # 默认支持三人对话
     ) -> List[Dict[str, Any]]:
         """
         处理多智能体对话 - 支持动态发言顺序
@@ -189,7 +205,16 @@ class AgentManager:
             智能体回复列表，按动态顺序排列
         """
         try:
-            logger.info(f"🎤 开始多智能体对话: session_id={session_id}, user_message='{user_message[:50]}...'")
+            logger.info(f"🎤 开始智能多智能体对话: session_id={session_id}, user_message='{user_message[:50]}...'")
+            
+            # 1. 分析话题复杂度
+            complexity = complexity_analyzer.analyze_complexity(user_message)
+            logger.info(f"📊 话题复杂度: {complexity.complexity_level} (得分: {complexity.complexity_score:.2f})")
+            
+            # 2. 确定对话模式
+            conversation_mode = complexity.conversation_mode
+            mode_instructions = conversation_mode_manager.get_mode_instructions(conversation_mode, "general")
+            logger.info(f"🎭 对话模式: {conversation_mode}")
             
             # 获取或创建会话
             if session_id not in self.conversation_sessions:
@@ -209,8 +234,19 @@ class AgentManager:
                 "timestamp": datetime.now().isoformat()
             })
             
-            # 确定发言顺序
-            speaking_order = self.determine_speaking_order(user_message, max_participants)
+            # 3. 智能确定发言顺序和参与者数量
+            # 根据复杂度调整参与者数量
+            if complexity.complexity_level == "complex":
+                # 复杂话题，可能需要更多参与者
+                suggested_participants = min(max_participants, 3)
+            elif complexity.complexity_level == "simple":
+                # 简单话题，2人即可
+                suggested_participants = min(max_participants, 2)
+            else:
+                # 中等话题，默认参与者数量
+                suggested_participants = max_participants
+            
+            speaking_order = self.determine_speaking_order(user_message, suggested_participants)
             
             if not speaking_order:
                 logger.error("❌ 无法确定发言顺序")
@@ -238,7 +274,9 @@ class AgentManager:
                     agent_id=agent_id,
                     user_message=user_message,
                     previous_responses=previous_responses,
-                    is_first_speaker=(order_index == 0)
+                    is_first_speaker=(order_index == 0),
+                    complexity=complexity,
+                    conversation_mode=conversation_mode
                 )
                 
                 # 生成回复
@@ -281,7 +319,16 @@ class AgentManager:
                 
                 logger.info(f"✅ {agent_name} 回复完成: '{agent_reply[:50]}...'")
             
-            logger.info(f"✅ 多智能体对话完成: session_id={session_id}, 参与者数量={len(responses)}")
+            # 4. 更新用户个性化数据
+            personalization_manager.update_user_interaction(
+                user_id=user_id,
+                question=user_message,
+                complexity=complexity,
+                responses=responses
+            )
+            
+            logger.info(f"✅ 智能多智能体对话完成: session_id={session_id}, 参与者数量={len(responses)}, "
+                       f"复杂度={complexity.complexity_level}, 模式={conversation_mode}")
             return responses
             
         except Exception as e:
@@ -293,7 +340,9 @@ class AgentManager:
         agent_id: str, 
         user_message: str, 
         previous_responses: List[Dict[str, Any]], 
-        is_first_speaker: bool
+        is_first_speaker: bool,
+        complexity=None,
+        conversation_mode: str = "discussion"
     ) -> Optional[Dict[str, Any]]:
         """
         构建智能体上下文信息
@@ -307,19 +356,25 @@ class AgentManager:
         Returns:
             上下文信息字典
         """
+        # 构建基础上下文
+        context = {
+            "is_responding": not is_first_speaker,
+            "conversation_mode": conversation_mode,
+            "suggested_length": complexity.suggested_length if complexity else (120, 180)
+        }
+        
         if is_first_speaker:
-            # 首发智能体不需要特殊上下文
-            return None
+            # 首发智能体也需要长度和模式信息
+            return context
         
         if not previous_responses:
-            return None
+            return context
         
-        # 构建回应上下文
-        context = {
-            "is_responding": True,
+        # 为回应者添加更多上下文
+        context.update({
             "previous_speakers": [],
             "should_respond_to_previous": True
-        }
+        })
         
         # 添加之前发言者的信息
         for response in previous_responses:
@@ -365,6 +420,32 @@ class AgentManager:
             })
         
         return error_responses
+    
+    def get_follow_up_suggestions(self, user_id: str, current_topic: str) -> List[str]:
+        """获取后续问题推荐"""
+        try:
+            suggestions = personalization_manager.suggest_follow_up_questions(user_id, current_topic)
+            logger.info(f"💡 为用户 {user_id} 生成 {len(suggestions)} 个后续问题推荐")
+            return suggestions
+        except Exception as e:
+            logger.error(f"❌ 生成后续问题推荐失败: {e}")
+            return []
+    
+    def get_user_profile_summary(self, user_id: str) -> Dict[str, Any]:
+        """获取用户画像摘要"""
+        try:
+            profile = personalization_manager.get_or_create_profile(user_id)
+            return {
+                "user_id": user_id,
+                "investment_level": profile.investment_level,
+                "preferred_topics": profile.preferred_topics,
+                "interaction_style": profile.interaction_style,
+                "total_questions": len(profile.question_history),
+                "learning_progress": profile.learning_progress
+            }
+        except Exception as e:
+            logger.error(f"❌ 获取用户画像失败: {e}")
+            return {"user_id": user_id, "error": str(e)}
     
     def get_conversation_history(self, session_id: str) -> List[Dict[str, Any]]:
         """获取会话历史"""

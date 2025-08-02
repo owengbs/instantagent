@@ -43,6 +43,16 @@ async def test_topic_analysis():
             "message": "如何利用反身性理论进行投资？",
             "expected": "soros",
             "description": "索罗斯专业理论"
+        },
+        {
+            "message": "如何运用多元思维模型避免投资错误？",
+            "expected": "munger",
+            "description": "芒格多元思维理论"
+        },
+        {
+            "message": "认知偏差对投资决策有什么影响？",
+            "expected": "munger", 
+            "description": "芒格认知心理学"
         }
     ]
     
@@ -86,6 +96,10 @@ async def test_dynamic_conversation():
         {
             "message": "现在的市场环境下如何投资？",
             "description": "通用话题（随机首发）"
+        },
+        {
+            "message": "如何运用跨学科思维分析复杂的投资决策？",
+            "description": "复杂话题（预期三人参与）"
         }
     ]
     

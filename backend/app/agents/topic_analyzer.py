@@ -74,10 +74,39 @@ class TopicAnalyzer:
                 
                 # 英文关键词
                 'macro investing', 'currency', 'forex', 'hedge fund',
-                'speculation', 'reflexivity', 'market sentiment', 'bubble'
+                'speculation',                 'reflexivity', 'market sentiment', 'bubble'
             ],
             'strength_score': 1.0,
             'description': '宏观经济分析和投机策略专家'
+        },
+        
+        'munger': {
+            'keywords': [
+                # 多元思维模型
+                '多元思维', '思维模型', '格栅理论', '跨学科', '逆向思考', '逆向思维',
+                '认知偏差', '心理学', '行为金融学', '认知陷阱', '思维陷阱',
+                
+                # 芒格相关
+                '芒格', '查理', 'charlie', 'munger', '多元智慧', '格栅',
+                
+                # 学习和智慧
+                '终身学习', '学习机器', '智慧', '常识', '简单', '复杂问题简单化',
+                '第一性原理', '基本原理', '本质思考',
+                
+                # 决策和判断
+                '决策', '判断', '选择', '错误', '失败', '经验教训',
+                '概率思维', '统计思维', '数学思维',
+                
+                # 跨学科概念
+                '物理学', '生物学', '化学', '工程学', '系统思维',
+                '复合效应', '临界点', '网络效应', '规模效应',
+                
+                # 英文关键词
+                'mental models', 'multidisciplinary', 'cognitive bias',
+                'invert', 'latticework', 'first principles'
+            ],
+            'strength_score': 1.0,
+            'description': '多元思维模型和跨学科分析专家'
         }
     }
     
