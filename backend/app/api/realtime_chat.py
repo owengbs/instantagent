@@ -333,7 +333,24 @@ class RealtimeChatManager:
                 user_id=client_id
             )
             
-            # 按顺序处理每个智能体的回复
+            # 优化：并行合成所有语音，串行播放
+            start_time = datetime.now()
+            logger.info(f"🚀 开始并行合成所有智能体语音: {len(agent_responses)}个智能体, 开始时间: {start_time.isoformat()}")
+            
+            # 步骤1：立即发送所有智能体的文本回复
+            for response in agent_responses:
+                await self.send_message(client_id, {
+                    "type": "multi_agent_response",
+                    "agent_id": response["agent_id"],
+                    "agent_name": response["agent_name"],
+                    "content": response["content"],
+                    "order": response["order"],
+                    "timestamp": datetime.now().isoformat()
+                })
+                logger.info(f"📝 发送智能体文本回复: {response['agent_name']}, order={response['order']}")
+            
+            # 步骤2：并行启动所有语音合成任务
+            synthesis_tasks = []
             for response in agent_responses:
                 agent_id = response["agent_id"]
                 agent_name = response["agent_name"]
@@ -341,44 +358,43 @@ class RealtimeChatManager:
                 voice = response["voice"]
                 order = response["order"]
                 
-                logger.info(f"🤖 处理智能体回复: {agent_name}, order={order}")
-                
-                # 发送智能体回复消息
-                await self.send_message(client_id, {
-                    "type": "multi_agent_response",
-                    "agent_id": agent_id,
-                    "agent_name": agent_name,
-                    "content": content,
-                    "order": order,
-                    "timestamp": datetime.now().isoformat()
-                })
-                
-                # 清理文本并合成语音
+                # 清理文本
                 cleaned_content = text_cleaner.clean_for_tts(content)
+                logger.info(f"🎵 启动并行TTS合成: {agent_name}, order={order}")
                 
-                logger.info(f"🎵 开始TTS合成智能体语音: {agent_name}, content='{cleaned_content[:50]}...'")
-                
-                # 异步TTS合成，不阻塞后续处理
-                await self._synthesize_and_send_multi_agent_audio(
+                # 创建语音合成任务（不等待完成）
+                task = asyncio.create_task(self._synthesize_and_send_multi_agent_audio(
                     client_id, 
                     cleaned_content, 
                     voice, 
                     agent_id,
                     agent_name,
                     order
-                )
+                ))
+                synthesis_tasks.append((order, task))
+            
+            # 步骤3：按顺序等待并发送语音（确保播放顺序）
+            synthesis_tasks.sort(key=lambda x: x[0])  # 按order排序
+            for order, task in synthesis_tasks:
+                logger.info(f"⏳ 等待语音合成完成: order={order}")
+                await task
+                logger.info(f"✅ 语音合成并发送完成: order={order}")
                 
-                # 等待一小段时间，确保语音播放顺序
-                await asyncio.sleep(0.5)
+                # 短暂延迟确保播放顺序
+                await asyncio.sleep(0.2)
             
             # 发送处理完成事件
+            end_time = datetime.now()
+            total_duration = (end_time - start_time).total_seconds()
+            
             await self.send_message(client_id, {
                 "type": "multi_agent_processing_complete",
                 "total_agents": len(agent_responses),
-                "timestamp": datetime.now().isoformat()
+                "total_duration_seconds": total_duration,
+                "timestamp": end_time.isoformat()
             })
             
-            logger.info(f"✅ 多智能体对话处理完成: client_id={client_id}, 智能体数量={len(agent_responses)}")
+            logger.info(f"✅ 多智能体对话处理完成: client_id={client_id}, 智能体数量={len(agent_responses)}, 总耗时={total_duration:.2f}秒")
             
         except Exception as e:
             logger.error(f"❌ 多智能体对话处理失败: client_id={client_id}, error={e}")
@@ -476,7 +492,8 @@ class RealtimeChatManager:
     ):
         """为多智能体合成并发送音频"""
         try:
-            logger.info(f"🎵 开始多智能体TTS合成: {agent_name}, text='{text[:30]}...'")
+            synthesis_start = datetime.now()
+            logger.info(f"🎵 开始多智能体TTS合成: {agent_name}(order={order}), text='{text[:30]}...', 开始时间: {synthesis_start.isoformat()}")
             
             # 发送TTS开始事件
             await self.send_message(client_id, {
@@ -484,7 +501,7 @@ class RealtimeChatManager:
                 "agent_id": agent_id,
                 "agent_name": agent_name,
                 "order": order,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": synthesis_start.isoformat()
             })
             
             # 调用Realtime TTS服务进行流式合成
@@ -514,6 +531,9 @@ class RealtimeChatManager:
                 })
             
             # 发送TTS完成事件
+            synthesis_end = datetime.now()
+            synthesis_duration = (synthesis_end - synthesis_start).total_seconds()
+            
             await self.send_message(client_id, {
                 "type": "multi_agent_tts_complete",
                 "agent_id": agent_id,
@@ -521,10 +541,11 @@ class RealtimeChatManager:
                 "order": order,
                 "total_chunks": chunk_count,
                 "total_size": total_size,
-                "timestamp": datetime.now().isoformat()
+                "synthesis_duration_seconds": synthesis_duration,
+                "timestamp": synthesis_end.isoformat()
             })
             
-            logger.info(f"✅ 多智能体TTS合成完成: {agent_name}, order={order}, chunks={chunk_count}, size={total_size}")
+            logger.info(f"✅ 多智能体TTS合成完成: {agent_name}, order={order}, chunks={chunk_count}, size={total_size}, 耗时={synthesis_duration:.2f}秒")
             
         except Exception as e:
             logger.error(f"❌ 多智能体TTS合成失败: {agent_name}, order={order}, error={e}")

@@ -35,11 +35,11 @@ class SorosAgent(BaseAgent):
         
     async def generate_response(self, user_message: str, context: Optional[Dict[str, Any]] = None) -> str:
         """
-        生成索罗斯风格的回复
+        生成索罗斯风格的回复 - 支持动态上下文
         
         Args:
             user_message: 用户消息
-            context: 对话上下文，包含巴菲特的回复
+            context: 对话上下文，可能包含其他智能体的回复
             
         Returns:
             索罗斯风格的回复
@@ -59,23 +59,54 @@ class SorosAgent(BaseAgent):
             2. 强调宏观分析和趋势判断
             3. 关注市场时机和转折点
             4. 体现敏锐的市场洞察力
-            5. 如果context中包含巴菲特的观点，可以礼貌地回应，但坚持宏观投资的理念
-            6. 回复要富有洞察力，体现对市场趋势的敏锐判断
+            5. 如果其他投资大师已经发言，请明确引用他们的观点并给出你的看法
+            6. 可以赞同、质疑、补充或从宏观角度重新分析，但要坚持宏观投资理念
+            7. 回复要富有洞察力，体现对市场趋势的敏锐判断
             
             请用中文回复，保持索罗斯一贯的犀利和洞察力。
             """
             
-            # 构建用户消息
-            if context and context.get('buffett_reply'):
-                user_prompt = f"""
-                用户问题：{user_message}
+            # 构建用户消息 - 支持多种上下文格式
+            user_prompt = f"用户问题：{user_message}\n\n"
+            
+            # 处理新的上下文格式
+            if context and context.get('is_responding'):
+                # 新的动态上下文格式
+                if context.get('last_speaker'):
+                    last_speaker = context['last_speaker']
+                    user_prompt += f"""
+                    {last_speaker['agent_name']} 刚刚发表了观点：
+                    "{last_speaker['content']}"
+                    
+                    请针对以上观点给出你的看法。你可以：
+                    - 从宏观经济角度补充分析
+                    - 指出不同的投资时机和策略
+                    - 质疑或支持对方的观点
+                    - 分享相关的宏观投资案例
+                    
+                    请在回复开始明确引用对方的关键观点，然后给出你的宏观分析。
+                    """
                 
+                # 如果有多个之前的发言者
+                if context.get('previous_speakers') and len(context['previous_speakers']) > 1:
+                    user_prompt += "\n本轮对话的完整背景：\n"
+                    for speaker in context['previous_speakers']:
+                        user_prompt += f"- {speaker['agent_name']}: {speaker['content'][:100]}...\n"
+                    
+            elif context and context.get('buffett_reply'):
+                # 兼容旧的上下文格式
+                user_prompt += f"""
                 巴菲特的回复：{context['buffett_reply']}
                 
                 请基于用户问题给出索罗斯的回复，如果需要的话可以礼貌地回应巴菲特的观点，但要坚持宏观投资的理念。
                 """
-            else:
-                user_prompt = f"用户问题：{user_message}"
+            elif context and context.get('soros_reply'):
+                # 兼容旧的上下文格式（当索罗斯需要回应自己之前的观点时）
+                user_prompt += f"""
+                之前的讨论：{context['soros_reply']}
+                
+                请基于用户问题和之前的讨论给出进一步的回复。
+                """
             
             # 调用现有的customer_agent进行回复生成
             from .customer_agent import customer_agent
