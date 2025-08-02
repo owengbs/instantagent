@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Debug Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .log { background: #f5f5f5; padding: 10px; height: 300px; overflow-y: auto; border: 1px solid #ddd; }
+        .input-group { margin: 10px 0; }
+        .input-group input, .input-group button { padding: 8px; margin: 5px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket调试工具</h1>
+        
+        <div id="status" class="status disconnected">未连接</div>
+        
+        <div class="input-group">
+            <input type="text" id="wsUrl" value="ws://localhost:8000/api/realtime/ws/test-session" placeholder="WebSocket URL">
+            <button onclick="connect()">连接</button>
+            <button onclick="disconnect()">断开</button>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="message" value="如何运用多元思维模型避免投资错误？" placeholder="测试消息">
+            <button onclick="sendTestMessage()">发送三人对话测试</button>
+            <button onclick="sendTwoPersonMessage()">发送两人对话测试</button>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'sent' ? 'blue' : type === 'received' ? 'green' : 'black';
+            logDiv.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = '已连接';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = '未连接';
+            }
+        }
+        
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    log('WebSocket连接成功', 'info');
+                    updateStatus(true);
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`收到消息: ${JSON.stringify(data, null, 2)}`, 'received');
+                        
+                        // 特别关注多智能体响应
+                        if (data.type === 'multi_agent_response') {
+                            log(`🤖 多智能体回复: ${data.agent_name} (order: ${data.order})`, 'received');
+                        }
+                    } catch (e) {
+                        log(`收到原始消息: ${event.data}`, 'received');
+                    }
+                };
+                
+                ws.onclose = () => {
+                    log('WebSocket连接关闭', 'info');
+                    updateStatus(false);
+                };
+                
+                ws.onerror = (error) => {
+                    log(`WebSocket错误: ${error}`, 'error');
+                    updateStatus(false);
+                };
+                
+            } catch (error) {
+                log(`连接失败: ${error}`, 'error');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendTestMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('WebSocket未连接', 'error');
+                return;
+            }
+            
+            const message = document.getElementById('message').value;
+            const messageData = {
+                type: "chat",
+                message: message,
+                user_id: "debug_user",
+                session_id: "debug_session",
+                chat_mode: "multi_agent"
+            };
+            
+            log(`发送三人对话消息: ${JSON.stringify(messageData, null, 2)}`, 'sent');
+            ws.send(JSON.stringify(messageData));
+        }
+        
+        function sendTwoPersonMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('WebSocket未连接', 'error');
+                return;
+            }
+            
+            const message = document.getElementById('message').value;
+            const messageData = {
+                type: "chat",
+                message: message,
+                user_id: "debug_user",
+                session_id: "debug_session",
+                chat_mode: "single"
+            };
+            
+            log(`发送两人对话消息: ${JSON.stringify(messageData, null, 2)}`, 'sent');
+            ws.send(JSON.stringify(messageData));
+        }
+        
+        // 页面加载时自动连接
+        window.onload = () => {
+            log('调试工具已加载，点击连接按钮开始测试', 'info');
+        };
+    </script>
+</body>
+</html>

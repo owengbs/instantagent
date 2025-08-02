@@ -187,6 +187,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             case 'multi_agent_response':
               console.log('🤖 收到多智能体回复:', data)
+              console.log(`📊 智能体信息: ID=${data.agent_id}, Name=${data.agent_name}, Order=${data.order}`)
               
               // 停止打字指示器
               dispatch({ type: 'SET_TYPING', payload: false })

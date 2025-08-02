@@ -67,6 +67,13 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
     msg.type === 'munger'
   );
 
+  // 调试信息
+  console.log(`🔍 多智能体消息过滤结果: 总消息数=${messages.length}, 过滤后=${multiAgentMessages.length}`);
+  console.log('📋 过滤后的消息类型分布:', multiAgentMessages.reduce((acc, msg) => {
+    acc[msg.type] = (acc[msg.type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>));
+
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* 圆桌布局头部 */}
@@ -168,6 +175,11 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
         ) : (
           multiAgentMessages.map((message, index) => {
             const agent = agentInfo[message.agent_id as keyof typeof agentInfo];
+            
+            // 调试信息
+            if (message.type !== 'user') {
+              console.log(`🎭 渲染智能体消息: ${message.agent_id} (${message.agent_name}) - Order: ${message.order}`);
+            }
             
             return (
               <MessageBubble
