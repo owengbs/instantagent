@@ -3,11 +3,17 @@ import { motion } from 'framer-motion'
 import { User, Bot, Clock, FileText } from 'lucide-react'
 import { MessageBubbleProps } from '../types'
 import { formatTime, copyToClipboard } from '../utils'
+import AgentAvatar from './AgentAvatar'
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage, className = '' }) => {
   const isUser = message.type === 'user'
   const isAssistant = message.type === 'assistant'
+  const isMultiAgent = message.isMultiAgent
   const isTyping = message.isTyping
+  
+  // 多智能体消息类型判断
+  const isBuffett = message.type === 'buffett' || message.agent_id === 'buffett'
+  const isSoros = message.type === 'soros' || message.agent_id === 'soros'
 
   // 复制消息内容
   const handleCopyMessage = async () => {
@@ -24,21 +30,29 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage })
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 ${className}`}
     >
       <div className={`flex items-start space-x-3 max-w-[80%] ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
         {/* 头像 */}
-        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser 
-            ? 'bg-blue-500 text-white' 
-            : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-        }`}>
-          {isUser ? (
-            <User className="w-4 h-4" />
-          ) : (
-            <Bot className="w-4 h-4" />
-          )}
-        </div>
+        {isMultiAgent && message.agent ? (
+          <AgentAvatar
+            agent={message.agent}
+            size="sm"
+            showName={false}
+          />
+        ) : (
+          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+            isUser 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+          }`}>
+            {isUser ? (
+              <User className="w-4 h-4" />
+            ) : (
+              <Bot className="w-4 h-4" />
+            )}
+          </div>
+        )}
 
         {/* 消息内容 */}
         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
@@ -47,9 +61,27 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage })
             className={`relative px-4 py-3 rounded-2xl message-bubble ${
               isUser
                 ? 'bg-blue-500 text-white rounded-br-md'
+                : isBuffett
+                ? 'bg-blue-50 text-gray-800 rounded-bl-md shadow-soft border border-blue-200'
+                : isSoros
+                ? 'bg-green-50 text-gray-800 rounded-bl-md shadow-soft border border-green-200'
                 : 'bg-white text-gray-800 rounded-bl-md shadow-soft border border-gray-200'
             } ${isTyping ? 'animate-pulse' : ''}`}
           >
+            {/* 智能体名称（多智能体消息） */}
+            {isMultiAgent && message.agent && !isUser && (
+              <div className="mb-2">
+                <span className="text-xs font-medium text-gray-600">
+                  {message.agent.name}
+                </span>
+                {message.order && (
+                  <span className="text-xs text-gray-400 ml-2">
+                    (第{message.order}位回复)
+                  </span>
+                )}
+              </div>
+            )}
+            
             {/* 消息文本 */}
             <div className="text-sm leading-relaxed whitespace-pre-wrap">
               {isTyping ? (

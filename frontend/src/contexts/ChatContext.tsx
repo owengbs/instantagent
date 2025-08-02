@@ -97,7 +97,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const host = process.env.NODE_ENV === 'development' 
         ? 'localhost:8000' 
         : window.location.host
-      const wsUrl = `${protocol}//${host}/api/chat/ws/${state.sessionId}`
+      const wsUrl = `${protocol}//${host}/api/realtime/ws/${state.sessionId}`
 
       wsRef.current = new WebSocket(wsUrl)
 
@@ -122,6 +122,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   timestamp: data.timestamp || new Date().toISOString()
                 }
               })
+              break
+            
+            case 'multi_agent_processing_start':
+              dispatch({ type: 'SET_TYPING', payload: true })
               break
             
             case 'processing':
@@ -172,6 +176,42 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   hasCallback: !!onNewAIResponseRef.current,
                   hasMessage: !!data.message
                 })
+              }
+              break
+            
+            case 'multi_agent_response':
+              console.log('🤖 收到多智能体回复:', data)
+              
+              // 停止打字指示器
+              dispatch({ type: 'SET_TYPING', payload: false })
+              
+              dispatch({
+                type: 'ADD_MESSAGE',
+                payload: {
+                  id: generateId(),
+                  type: data.agent_id as 'buffett' | 'soros',
+                  content: data.content,
+                  timestamp: data.timestamp || new Date().toISOString(),
+                  agent_id: data.agent_id,
+                  agent_name: data.agent_name,
+                  order: data.order,
+                  isMultiAgent: true,
+                  agent: {
+                    id: data.agent_id,
+                    name: data.agent_name || '未知智能体',
+                    description: data.agent_id === 'buffett' ? '价值投资大师' : '宏观投资大师',
+                    color: data.agent_id === 'buffett' ? '#3B82F6' : '#10B981'
+                  }
+                }
+              })
+              
+              // 触发语音回调
+              if (onNewAIResponseRef.current && data.content) {
+                console.log('🔊 触发多智能体语音合成回调:', {
+                  agent: data.agent_name,
+                  messageLength: data.content.length
+                })
+                onNewAIResponseRef.current(data.content)
               }
               break
             
@@ -250,9 +290,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       try {
         const messageData = {
+          type: "chat",
           message: content.trim(),
           user_id: state.userId,
-          session_id: state.sessionId
+          session_id: state.sessionId,
+          chat_mode: "multi_agent"
         }
         console.log('📤 发送 WebSocket 消息:', messageData)
         wsRef.current.send(JSON.stringify(messageData))

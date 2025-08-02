@@ -14,6 +14,7 @@ from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 
 from ..agents.customer_agent import customer_agent
+from ..agents.agent_manager import agent_manager
 from ..services.qwen_tts_realtime import qwen_tts_realtime
 from ..services.qwen_asr_realtime import qwen_asr_realtime
 from ..services.text_cleaner import text_cleaner
@@ -141,10 +142,10 @@ class RealtimeChatManager:
                     
                     if text.strip():
                         if is_final:
-                            # 最终识别结果，触发对话
+                            # 最终识别结果，触发多智能体对话
                             session["speech_buffer"] = ""
                             logger.info(f"🎤 ASR最终结果: '{text}'")
-                            await self.process_streaming_chat(client_id, text)
+                            await self.process_multi_agent_chat(client_id, text)
                         else:
                             # 部分识别结果，更新缓冲区
                             session["speech_buffer"] = text
@@ -311,6 +312,82 @@ class RealtimeChatManager:
                 "timestamp": datetime.now().isoformat()
             })
     
+    async def process_multi_agent_chat(self, client_id: str, user_message: str):
+        """处理多智能体对话"""
+        try:
+            session = self.user_sessions.get(client_id, {})
+            session_id = session.get("session_id", f"multi_agent_{client_id}")
+            
+            logger.info(f"🌊 开始处理多智能体对话: client_id={client_id}, message='{user_message[:50]}...'")
+            
+            # 发送处理开始事件
+            await self.send_message(client_id, {
+                "type": "multi_agent_processing_start",
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            # 调用智能体管理器处理多智能体对话
+            agent_responses = await agent_manager.process_multi_agent_conversation(
+                user_message=user_message,
+                session_id=session_id,
+                user_id=client_id
+            )
+            
+            # 按顺序处理每个智能体的回复
+            for response in agent_responses:
+                agent_id = response["agent_id"]
+                agent_name = response["agent_name"]
+                content = response["content"]
+                voice = response["voice"]
+                order = response["order"]
+                
+                logger.info(f"🤖 处理智能体回复: {agent_name}, order={order}")
+                
+                # 发送智能体回复消息
+                await self.send_message(client_id, {
+                    "type": "multi_agent_response",
+                    "agent_id": agent_id,
+                    "agent_name": agent_name,
+                    "content": content,
+                    "order": order,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+                # 清理文本并合成语音
+                cleaned_content = text_cleaner.clean_for_tts(content)
+                
+                logger.info(f"🎵 开始TTS合成智能体语音: {agent_name}, content='{cleaned_content[:50]}...'")
+                
+                # 异步TTS合成，不阻塞后续处理
+                await self._synthesize_and_send_multi_agent_audio(
+                    client_id, 
+                    cleaned_content, 
+                    voice, 
+                    agent_id,
+                    agent_name,
+                    order
+                )
+                
+                # 等待一小段时间，确保语音播放顺序
+                await asyncio.sleep(0.5)
+            
+            # 发送处理完成事件
+            await self.send_message(client_id, {
+                "type": "multi_agent_processing_complete",
+                "total_agents": len(agent_responses),
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            logger.info(f"✅ 多智能体对话处理完成: client_id={client_id}, 智能体数量={len(agent_responses)}")
+            
+        except Exception as e:
+            logger.error(f"❌ 多智能体对话处理失败: client_id={client_id}, error={e}")
+            await self.send_message(client_id, {
+                "type": "error",
+                "message": "多智能体对话处理失败，请重试",
+                "timestamp": datetime.now().isoformat()
+            })
+    
     async def _extract_sentences(self, text: str) -> List[str]:
         """提取完整的句子"""
         sentences = []
@@ -387,6 +464,78 @@ class RealtimeChatManager:
                 "error": str(e),
                 "timestamp": datetime.now().isoformat()
             })
+    
+    async def _synthesize_and_send_multi_agent_audio(
+        self, 
+        client_id: str, 
+        text: str, 
+        voice: str, 
+        agent_id: str,
+        agent_name: str,
+        order: int
+    ):
+        """为多智能体合成并发送音频"""
+        try:
+            logger.info(f"🎵 开始多智能体TTS合成: {agent_name}, text='{text[:30]}...'")
+            
+            # 发送TTS开始事件
+            await self.send_message(client_id, {
+                "type": "multi_agent_tts_start",
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "order": order,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            # 调用Realtime TTS服务进行流式合成
+            audio_chunks = []
+            chunk_count = 0
+            total_size = 0
+            
+            async for audio_chunk in qwen_tts_realtime.synthesize_stream(text, voice):
+                chunk_count += 1
+                total_size += len(audio_chunk)
+                audio_chunks.append(audio_chunk)
+                
+                # 发送音频片段
+                import base64
+                audio_b64 = base64.b64encode(audio_chunk).decode('utf-8')
+                
+                await self.send_message(client_id, {
+                    "type": "multi_agent_audio_chunk",
+                    "agent_id": agent_id,
+                    "agent_name": agent_name,
+                    "order": order,
+                    "chunk_index": chunk_count,
+                    "audio_data": audio_b64,
+                    "sample_rate": 24000,
+                    "channels": 1,
+                    "timestamp": datetime.now().isoformat()
+                })
+            
+            # 发送TTS完成事件
+            await self.send_message(client_id, {
+                "type": "multi_agent_tts_complete",
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "order": order,
+                "total_chunks": chunk_count,
+                "total_size": total_size,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            logger.info(f"✅ 多智能体TTS合成完成: {agent_name}, order={order}, chunks={chunk_count}, size={total_size}")
+            
+        except Exception as e:
+            logger.error(f"❌ 多智能体TTS合成失败: {agent_name}, order={order}, error={e}")
+            await self.send_message(client_id, {
+                "type": "multi_agent_tts_error",
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "order": order,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            })
 
 # 管理器实例
 realtime_manager = RealtimeChatManager()
@@ -447,8 +596,15 @@ async def handle_realtime_message(client_id: str, message: dict):
     if message_type == "chat":
         # 处理聊天消息
         user_message = message.get("message", "").strip()
+        chat_mode = message.get("chat_mode", "single")  # 默认单智能体模式
+        
         if user_message:
-            await realtime_manager.process_streaming_chat(client_id, user_message)
+            if chat_mode == "multi_agent":
+                # 多智能体模式
+                await realtime_manager.process_multi_agent_chat(client_id, user_message)
+            else:
+                # 单智能体模式（保持向后兼容）
+                await realtime_manager.process_streaming_chat(client_id, user_message)
         else:
             await realtime_manager.send_message(client_id, {
                 "type": "error",

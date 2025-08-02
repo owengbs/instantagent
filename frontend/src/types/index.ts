@@ -1,12 +1,27 @@
+// 智能体信息
+export interface Agent {
+  id: string
+  name: string
+  description: string
+  avatar?: string
+  color: string
+}
+
 // 消息类型
 export interface Message {
   id: string
-  type: 'user' | 'assistant' | 'system' | 'error'
+  type: 'user' | 'assistant' | 'system' | 'error' | 'buffett' | 'soros' | 'multi_agent_response'
   content: string
   timestamp: string
   isTyping?: boolean
   retrievedDocs?: RetrievedDocument[]
   context?: Record<string, any>
+  // 多智能体相关字段
+  agent_id?: string
+  agent_name?: string
+  agent?: Agent
+  isMultiAgent?: boolean
+  order?: number
 }
 
 // 检索到的文档
@@ -98,6 +113,7 @@ export interface WelcomeProps {
 export interface MessageBubbleProps {
   message: Message
   isLastMessage?: boolean
+  className?: string
 }
 
 export interface ChatInputProps {

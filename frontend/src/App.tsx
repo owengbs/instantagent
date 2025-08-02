@@ -1,17 +1,68 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import ChatContainer from './components/ChatContainer.tsx'
+import MultiAgentChatContainer from './components/MultiAgentChatContainer.tsx'
 import Header from './components/Header.tsx'
 import Welcome from './components/Welcome.tsx'
 import LoadingScreen from './components/LoadingScreen.tsx'
 import VoiceTest from './components/VoiceTest.tsx'
+import VoiceChatInput from './components/VoiceChatInput.tsx'
 
-import { ChatProvider } from './contexts/ChatContext'
+import { ChatProvider, useChat } from './contexts/ChatContext'
+
+// 内部聊天组件，在 ChatProvider 内部使用 useChat
+const ChatInterface: React.FC = () => {
+  const { sendMessage } = useChat()
+  const [showVoiceTest, setShowVoiceTest] = useState(false)
+
+  return (
+    <AnimatePresence mode="wait">
+      {showVoiceTest ? (
+        <motion.div
+          key="voice-test"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3 }}
+          className="h-screen flex flex-col"
+        >
+          <Header 
+            onTestClick={() => setShowVoiceTest(false)}
+            onSettingsClick={() => console.log('设置')}
+            onInfoClick={() => console.log('关于')}
+          />
+          <div className="flex-1 overflow-auto bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+            <VoiceTest />
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="chat"
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="h-screen flex flex-col"
+        >
+          <Header 
+            onTestClick={() => setShowVoiceTest(true)}
+            onSettingsClick={() => console.log('设置')}
+            onInfoClick={() => console.log('关于')}
+          />
+          <div className="flex-1 overflow-hidden">
+            <MultiAgentChatContainer />
+          </div>
+          {/* 语音输入区 */}
+          <div className="p-4 bg-white/80">
+            <VoiceChatInput onSendMessage={sendMessage} />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [showWelcome, setShowWelcome] = useState(true)
-  const [showVoiceTest, setShowVoiceTest] = useState(false)
 
   // 模拟初始加载
   useEffect(() => {
@@ -42,41 +93,8 @@ function App() {
             >
               <Welcome onStart={() => setShowWelcome(false)} />
             </motion.div>
-          ) : showVoiceTest ? (
-            <motion.div
-              key="voice-test"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="h-screen flex flex-col"
-            >
-              <Header 
-                onTestClick={() => setShowVoiceTest(false)}
-                onSettingsClick={() => console.log('设置')}
-                onInfoClick={() => console.log('关于')}
-              />
-              <div className="flex-1 overflow-auto bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
-                <VoiceTest />
-              </div>
-            </motion.div>
           ) : (
-            <motion.div
-              key="chat"
-              initial={{ opacity: 0, scale: 1.05 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="h-screen flex flex-col"
-            >
-              <Header 
-                onTestClick={() => setShowVoiceTest(true)}
-                onSettingsClick={() => console.log('设置')}
-                onInfoClick={() => console.log('关于')}
-              />
-              <div className="flex-1 overflow-hidden">
-                <ChatContainer />
-              </div>
-            </motion.div>
+            <ChatInterface />
           )}
         </AnimatePresence>
       </div>
