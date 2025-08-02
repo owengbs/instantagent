@@ -117,7 +117,7 @@ class AgentManager:
         """获取所有智能体信息"""
         return [agent.get_agent_info() for agent in self.agents.values()]
     
-    def determine_speaking_order(self, user_message: str, max_participants: int = 2) -> List[str]:
+    def determine_speaking_order(self, user_message: str, max_participants: int = 3) -> List[str]:
         """
         智能确定发言顺序
         
@@ -236,15 +236,14 @@ class AgentManager:
             
             # 3. 智能确定发言顺序和参与者数量
             # 根据复杂度调整参与者数量
-            if complexity.complexity_level == "complex":
-                # 复杂话题，可能需要更多参与者
-                suggested_participants = min(max_participants, 3)
-            elif complexity.complexity_level == "simple":
-                # 简单话题，2人即可
+            if complexity.complexity_level == "simple" and complexity.complexity_score < 0.2:
+                # 非常简单的基础话题，2人即可
                 suggested_participants = min(max_participants, 2)
+                logger.info(f"🎯 简单话题，使用2人对话")
             else:
-                # 中等话题，默认参与者数量
+                # 中等和复杂话题都使用3人对话，获得更丰富的观点
                 suggested_participants = max_participants
+                logger.info(f"🎯 中等/复杂话题，使用{max_participants}人对话")
             
             speaking_order = self.determine_speaking_order(user_message, suggested_participants)
             

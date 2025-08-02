@@ -196,8 +196,8 @@ class MungerAgent(BaseAgent):
         """获取智能体信息"""
         return {
             "agent_id": self.agent_id,
-            "name": self.agent_name,
-            "description": "多元思维模型专家，巴菲特的长期合作伙伴，以跨学科思维和逆向思考著称",
+            "name": self.name,
+            "description": self.description,
             "voice": self.voice,
             "specialties": self.thinking_models,
             "philosophy": "运用多元思维模型，避免认知偏差，坚持长期理性投资"
