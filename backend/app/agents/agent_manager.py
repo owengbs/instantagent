@@ -235,15 +235,9 @@ class AgentManager:
             })
             
             # 3. 智能确定发言顺序和参与者数量
-            # 根据复杂度调整参与者数量
-            if complexity.complexity_level == "simple" and complexity.complexity_score < 0.2:
-                # 非常简单的基础话题，2人即可
-                suggested_participants = min(max_participants, 2)
-                logger.info(f"🎯 简单话题，使用2人对话")
-            else:
-                # 中等和复杂话题都使用3人对话，获得更丰富的观点
-                suggested_participants = max_participants
-                logger.info(f"🎯 中等/复杂话题，使用{max_participants}人对话")
+            # 始终使用3人对话，提供最丰富的投资观点交流
+            suggested_participants = max_participants
+            logger.info(f"🎯 三人圆桌对话 (复杂度: {complexity.complexity_level}, 得分: {complexity.complexity_score:.2f})")
             
             speaking_order = self.determine_speaking_order(user_message, suggested_participants)
             
