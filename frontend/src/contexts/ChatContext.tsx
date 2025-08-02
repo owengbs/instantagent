@@ -87,8 +87,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const onNewAIResponseRef = useRef<((response: string) => void) | null>(null)
   
   // 语音队列管理
-  const speechQueueRef = useRef<Array<{content: string, agent?: string}>>([])
+  const speechQueueRef = useRef<Array<{content: string, agent?: string, audioData?: string, order?: number}>>([])
   const isSpeakingRef = useRef<boolean>(false)
+  const audioBufferRef = useRef<Map<string, {chunks: Array<string>, order: number, agent_name: string}>>(new Map())
+  const audioContextRef = useRef<AudioContext | null>(null)
 
   // 连接 WebSocket
   const connect = useCallback(() => {
@@ -209,9 +211,55 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               })
               
-              // 添加到语音队列而不是直接播放
-              if (data.content) {
-                addToSpeechQueue(data.content, data.agent_name)
+              // 多智能体文本回复：不再直接合成语音，等待后端发送音频
+              console.log('📝 收到多智能体文本，等待后端音频数据...')
+              break
+            
+            case 'multi_agent_audio_chunk':
+              // 收集音频块
+              const audioKey = `${data.agent_id}_${data.order}`
+              const audioBuffer = audioBufferRef.current.get(audioKey) || {
+                chunks: [] as string[],
+                order: data.order,
+                agent_name: data.agent_name
+              }
+              audioBuffer.chunks.push(data.audio_data as string)
+              audioBufferRef.current.set(audioKey, audioBuffer)
+              console.log(`🎵 收到音频块: ${data.agent_name}, chunk ${data.chunk_index}`)
+              break
+            
+            case 'multi_agent_tts_complete':
+              // TTS完成，将完整音频加入播放队列
+              const completeAudioKey = `${data.agent_id}_${data.order}`
+              const completeAudioBuffer = audioBufferRef.current.get(completeAudioKey)
+              
+              if (completeAudioBuffer) {
+                // 合并所有音频块
+                const fullAudioData = completeAudioBuffer.chunks.join('')
+                console.log(`✅ TTS完成，加入播放队列: ${data.agent_name}, order=${data.order}`)
+                
+                // 直接加入语音播放队列（已经是完整音频）
+                speechQueueRef.current.push({
+                  content: '', // 文本内容不需要了
+                  agent: data.agent_name,
+                  audioData: fullAudioData,
+                  order: data.order
+                })
+                
+                // 按order排序确保播放顺序
+                speechQueueRef.current.sort((a, b) => (a.order || 0) - (b.order || 0))
+                
+                // 清理缓存
+                audioBufferRef.current.delete(completeAudioKey)
+                
+                console.log(`📋 语音队列状态:`, speechQueueRef.current.map(s => ({
+                  agent: s.agent,
+                  order: s.order,
+                  hasAudio: !!s.audioData
+                })))
+                
+                // 触发播放队列处理
+                processSpeechQueue()
               }
               break
             
@@ -330,27 +378,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     const nextSpeech = speechQueueRef.current.shift()
-    if (nextSpeech && onNewAIResponseRef.current) {
+    if (nextSpeech) {
       isSpeakingRef.current = true
       console.log('🎵 开始播放语音队列:', {
         agent: nextSpeech.agent || '未知',
+        hasAudioData: !!nextSpeech.audioData,
         contentLength: nextSpeech.content.length,
         queueLength: speechQueueRef.current.length
       })
-      onNewAIResponseRef.current(nextSpeech.content)
+      
+      if (nextSpeech.audioData) {
+        // 直接播放预合成的音频数据
+        playAudioData(nextSpeech.audioData)
+      } else if (onNewAIResponseRef.current && nextSpeech.content) {
+        // 回退到文本合成播放
+        onNewAIResponseRef.current(nextSpeech.content)
+      }
     }
   }, [])
   
-  // 添加语音到队列
-  const addToSpeechQueue = useCallback((content: string, agent?: string) => {
-    speechQueueRef.current.push({ content, agent })
-    console.log('📝 添加到语音队列:', {
-      agent: agent || '未知',
-      contentLength: content.length,
-      queueLength: speechQueueRef.current.length
-    })
-    processSpeechQueue()
-  }, [processSpeechQueue])
+  // 注释：addToSpeechQueue 已移除，改为直接在multi_agent_tts_complete中处理
   
   // 语音播放完成回调
   const onSpeechEnd = useCallback(() => {
@@ -359,6 +406,72 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     processSpeechQueue()
   }, [processSpeechQueue])
   
+  // 直接播放音频数据
+  const playAudioData = useCallback(async (base64AudioData: string) => {
+    try {
+      console.log('🎵 开始播放预合成音频数据（PCM格式）')
+      
+      // 初始化AudioContext
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      }
+      
+      const audioContext = audioContextRef.current
+      
+      // Base64 解码为 ArrayBuffer
+      const binaryString = atob(base64AudioData)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+      
+      // Qwen TTS 返回的是PCM数据，需要转换为AudioBuffer
+      // 音频参数：24kHz, 16-bit, mono
+      const sampleRate = 24000
+      const numChannels = 1
+      const bytesPerSample = 2 // 16-bit = 2 bytes
+      
+      // 计算采样点数量
+      const numSamples = bytes.length / bytesPerSample
+      
+      // 创建AudioBuffer
+      const audioBuffer = audioContext.createBuffer(numChannels, numSamples, sampleRate)
+      const channelData = audioBuffer.getChannelData(0)
+      
+      // 将16-bit PCM数据转换为浮点数 (-1.0 到 1.0)
+      for (let i = 0; i < numSamples; i++) {
+        const byteIndex = i * bytesPerSample
+        // 读取16-bit little-endian
+        const sample = (bytes[byteIndex + 1] << 8) | bytes[byteIndex]
+        // 转换为有符号16-bit
+        const signedSample = sample > 32767 ? sample - 65536 : sample
+        // 归一化到 -1.0 到 1.0
+        channelData[i] = signedSample / 32768.0
+      }
+      
+      // 创建音频源
+      const source = audioContext.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(audioContext.destination)
+      
+      // 播放结束后的处理
+      source.onended = () => {
+        console.log('✅ 预合成音频播放完成')
+        isSpeakingRef.current = false
+        processSpeechQueue() // 继续播放队列中的下一个
+      }
+      
+      // 开始播放
+      source.start(0)
+      console.log('🎵 预合成音频开始播放，采样数:', numSamples)
+      
+    } catch (error) {
+      console.error('❌ 播放预合成音频失败:', error)
+      isSpeakingRef.current = false
+      processSpeechQueue() // 继续处理队列
+    }
+  }, [])
+
   // 设置新AI回复的回调
   const setOnNewAIResponse = useCallback((callback: (response: string) => void) => {
     onNewAIResponseRef.current = callback
