@@ -4,12 +4,14 @@ import AgentAvatar from './AgentAvatar';
 import { useChat } from '../contexts/ChatContext';
 
 interface MultiAgentMessage {
-  type: 'user' | 'buffett' | 'soros';
+  type: 'user' | 'buffett' | 'soros' | 'munger' | 'multi_agent_response';
   agent_id: string;
   agent_name?: string;
   content: string;
   timestamp: string;
   order?: number;
+  is_first_speaker?: boolean;
+  speaking_order?: string[];
 }
 
 interface MultiAgentChatContainerProps {
@@ -35,6 +37,13 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
       avatar: '/avatars/soros.png',
       color: '#10B981'
     },
+    munger: {
+      id: 'munger',
+      name: '查理·芒格',
+      description: '多元思维专家',
+      avatar: '/avatars/munger.png',
+      color: '#8B5CF6'
+    },
     user: {
       id: 'user',
       name: '您',
@@ -54,13 +63,14 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
     msg.type === 'user' || 
     msg.type === 'multi_agent_response' ||
     msg.type === 'buffett' || 
-    msg.type === 'soros'
+    msg.type === 'soros' ||
+    msg.type === 'munger'
   );
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* 圆桌布局头部 */}
-      <div className="flex justify-center items-center p-4 bg-gradient-to-r from-blue-50 to-green-50 border-b">
+      <div className="flex justify-center items-center p-4 bg-gradient-to-r from-blue-50 via-purple-50 to-green-50 border-b">
         <div className="relative">
           {/* 用户头像 - 底部中央 */}
           <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2">
@@ -80,6 +90,15 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
             />
           </div>
           
+          {/* 芒格头像 - 顶部中央 */}
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
+            <AgentAvatar
+              agent={agentInfo.munger}
+              size="md"
+              className="border-4 border-white shadow-lg"
+            />
+          </div>
+          
           {/* 索罗斯头像 - 右上角 */}
           <div className="absolute top-0 right-0">
             <AgentAvatar
@@ -89,22 +108,52 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
             />
           </div>
           
-          {/* 连接线 */}
-          <svg className="w-32 h-32" viewBox="0 0 128 128">
+          {/* 连接线 - 形成三角形 */}
+          <svg className="w-40 h-32" viewBox="0 0 160 128">
+            {/* 用户到巴菲特 */}
             <line
-              x1="64" y1="64" x2="32" y2="32"
+              x1="80" y1="96" x2="32" y2="32"
               stroke="#3B82F6" strokeWidth="2" strokeDasharray="5,5"
             />
+            {/* 用户到芒格 */}
             <line
-              x1="64" y1="64" x2="96" y2="32"
+              x1="80" y1="96" x2="80" y2="32"
+              stroke="#8B5CF6" strokeWidth="2" strokeDasharray="5,5"
+            />
+            {/* 用户到索罗斯 */}
+            <line
+              x1="80" y1="96" x2="128" y2="32"
               stroke="#10B981" strokeWidth="2" strokeDasharray="5,5"
+            />
+            {/* 大师们之间的连接 */}
+            <line
+              x1="32" y1="32" x2="80" y2="32"
+              stroke="#6B7280" strokeWidth="1" strokeDasharray="3,3"
+            />
+            <line
+              x1="80" y1="32" x2="128" y2="32"
+              stroke="#6B7280" strokeWidth="1" strokeDasharray="3,3"
             />
           </svg>
         </div>
         
         <div className="ml-4">
           <h2 className="text-xl font-semibold text-gray-800">投资大师圆桌对话</h2>
-          <p className="text-sm text-gray-600">与巴菲特和索罗斯一起探讨投资策略</p>
+          <p className="text-sm text-gray-600">与巴菲特、芒格和索罗斯一起探讨投资策略</p>
+          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+            <span className="flex items-center">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+              价值投资
+            </span>
+            <span className="flex items-center">
+              <div className="w-2 h-2 bg-purple-500 rounded-full mr-1"></div>
+              多元思维
+            </span>
+            <span className="flex items-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+              宏观投资
+            </span>
+          </div>
         </div>
       </div>
 
@@ -132,6 +181,8 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
                   ${message.type === 'user' ? 'ml-auto' : 'mr-auto'}
                   ${message.type === 'buffett' ? 'border-l-4 border-blue-500' : ''}
                   ${message.type === 'soros' ? 'border-l-4 border-green-500' : ''}
+                  ${message.type === 'munger' ? 'border-l-4 border-purple-500' : ''}
+                  ${message.order ? `order-${message.order}` : ''}
                 `}
               />
             );

@@ -195,7 +195,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 type: 'ADD_MESSAGE',
                 payload: {
                   id: generateId(),
-                  type: data.agent_id as 'buffett' | 'soros',
+                  type: data.agent_id as 'buffett' | 'soros' | 'munger',
                   content: data.content,
                   timestamp: data.timestamp || new Date().toISOString(),
                   agent_id: data.agent_id,
@@ -205,8 +205,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   agent: {
                     id: data.agent_id,
                     name: data.agent_name || '未知智能体',
-                    description: data.agent_id === 'buffett' ? '价值投资大师' : '宏观投资大师',
-                    color: data.agent_id === 'buffett' ? '#3B82F6' : '#10B981'
+                    description: data.agent_id === 'buffett' ? '价值投资大师' : 
+                                data.agent_id === 'soros' ? '宏观投资大师' : '多元思维专家',
+                    color: data.agent_id === 'buffett' ? '#3B82F6' : 
+                           data.agent_id === 'soros' ? '#10B981' : '#8B5CF6'
                   }
                 }
               })

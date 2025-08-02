@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Bot, UserCircle } from 'lucide-react';
+import { User, Bot, UserCircle, Brain } from 'lucide-react';
 
 interface Agent {
   id: string;
@@ -50,6 +50,9 @@ const AgentAvatar: React.FC<AgentAvatarProps> = ({
     }
     if (agent.id === 'soros') {
       return <Bot className="w-full h-full text-green-400" />;
+    }
+    if (agent.id === 'munger') {
+      return <Brain className="w-full h-full text-purple-400" />;
     }
     // 默认
     return <User className="w-full h-full text-gray-400" />;

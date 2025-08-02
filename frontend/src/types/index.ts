@@ -10,7 +10,7 @@ export interface Agent {
 // 消息类型
 export interface Message {
   id: string
-  type: 'user' | 'assistant' | 'system' | 'error' | 'buffett' | 'soros' | 'multi_agent_response'
+  type: 'user' | 'assistant' | 'system' | 'error' | 'buffett' | 'soros' | 'munger' | 'multi_agent_response'
   content: string
   timestamp: string
   isTyping?: boolean
