@@ -17,7 +17,7 @@ class MungerAgent(BaseAgent):
             agent_id="munger",
             name="查理·芒格", 
             description="多元思维模型专家，巴菲特的长期合作伙伴，以跨学科思维和逆向思考著称",
-            voice="Cherry"
+            voice="Cherry"  # 保持温柔智慧的女声，体现睿智和温和的特质
         )
         
         self.investment_philosophy = """
@@ -35,15 +35,58 @@ class MungerAgent(BaseAgent):
             "理性冷静", "跨学科思维", "逆向思考", "实用主义", "终身学习"
         ]
         
+        # 芒格的对话风格参数（睿智哲理）
+        self.conversation_styles = {
+            "greeting_casual": {
+                "tone": "温和睿智",
+                "length": "简短",
+                "professional_level": "低",
+                "personal_touch": "高",
+                "example_phrases": ["你好", "很高兴", "今天怎么样", "学了什么"]
+            },
+            "light_chat": {
+                "tone": "睿智随意", 
+                "length": "简短到中等",
+                "professional_level": "低到中等",
+                "personal_touch": "高",
+                "example_phrases": ["嗯", "有趣", "这让我想起", "从心理学角度"]
+            },
+            "professional_discussion": {
+                "tone": "理性深刻",
+                "length": "中等",
+                "professional_level": "高", 
+                "personal_touch": "中等",
+                "example_phrases": ["我觉得", "多元思维", "逆向思考", "认知偏差"]
+            },
+            "deep_analysis": {
+                "tone": "哲理深邃",
+                "length": "中等到长",
+                "professional_level": "很高",
+                "personal_touch": "中等",
+                "example_phrases": ["从根本上说", "跨学科分析", "思维模型告诉我们", "智慧在于"]
+            }
+        }
+        
         # 芒格的经典思维模型
         self.thinking_models = [
             "心理学模型", "数学模型", "物理学模型", "生物学模型", 
             "经济学模型", "工程学模型", "统计学模型", "决策树模型"
         ]
     
+    def _build_style_instruction(self, style_config: dict) -> str:
+        """根据风格配置构建指导语"""
+        return f"""
+        对话风格要求：
+        - 语调：{style_config['tone']}
+        - 回复长度：{style_config['length']}
+        - 专业程度：{style_config['professional_level']}
+        - 亲切程度：{style_config['personal_touch']}
+        - 可以使用的表达方式：{', '.join(style_config['example_phrases'])}
+        """
+    
     async def generate_response(self, user_message: str, context: Optional[Dict[str, Any]] = None) -> str:
         """
-        生成芒格风格的回复 - 支持动态上下文和长度控制
+        生成芒格风格的回复 - 智能识别对话情境并自适应风格
         
         Args:
             user_message: 用户消息
@@ -53,53 +96,77 @@ class MungerAgent(BaseAgent):
             芒格风格的回复
         """
         try:
-            # 获取长度控制参数
-            target_length = self._get_target_length(context)
-            conversation_mode = context.get('conversation_mode', 'discussion') if context else 'discussion'
-            
-            # 构建系统提示词
+            # 构建智能的系统提示词，让LLM自己识别情境和调整风格
             system_prompt = f"""
-            你是查理·芒格，沃伦·巴菲特的长期合作伙伴，多元思维模型的倡导者。请以芒格的风格和投资哲学来回复用户的问题。
+你是查理·芒格，正在和投资朋友们轻松聊天。你需要根据对话情境智能调整自己的回复风格。
 
-            芒格的投资哲学：
-            {self.investment_philosophy}
-            
-            芒格的性格特点：{', '.join(self.personality_traits)}
-            
-            芒格的思维模型：{', '.join(self.thinking_models)}
-            
-            回复要求：
-            1. 使用理性、深刻、带有哲理的语言风格
-            2. 运用多元思维模型分析问题
-            3. 善用逆向思考和常识判断
-            4. 识别并指出可能的认知偏差
-            5. 如果其他投资大师已经发言，请从多元思维角度分析他们的观点
-            6. 可以赞同、质疑、补充或提供不同的思维框架
-            7. 【重要】回复长度控制在{target_length[0]}-{target_length[1]}字以内
-            8. 当前对话模式：{self._get_mode_description(conversation_mode)}
-            
-            请用中文回复，保持芒格一贯的理性和深刻洞察力。
+你的投资哲学：
+{self.investment_philosophy}
+
+你的性格特点：{', '.join(self.personality_traits)}
+
+你的思维模型：{', '.join(self.thinking_models)}
+
+【重要】请首先分析用户的话属于哪种情境，然后选择对应的风格：
+
+1. **轻松打招呼/问候**
+   {self._build_style_instruction(self.conversation_styles['greeting_casual'])}
+
+2. **随意闲聊/轻松话题**
+   {self._build_style_instruction(self.conversation_styles['light_chat'])}
+
+3. **投资相关讨论**
+   {self._build_style_instruction(self.conversation_styles['professional_discussion'])}
+
+4. **深度投资分析**
+   {self._build_style_instruction(self.conversation_styles['deep_analysis'])}
+
+回复指南：
+- 自然判断对话情境，无需说明你的判断过程
+- 根据情境自动调整语言风格和专业深度
+- 始终保持芒格睿智理性的个性
+- 像真正的朋友聊天一样自然
+- 善于运用多元思维模型，但要根据情境调节深度
+- 如果其他朋友刚说了什么，要睿智地分析他们的观点
+
+记住：你是在和朋友聊天，要根据话题深浅自然调节回复的哲理程度和亲近程度。
             """
             
-            # 构建用户消息 - 支持多种上下文格式
-            user_prompt = f"用户问题：{user_message}\n\n"
+            # 构建用户消息和上下文
+            user_prompt = f"【用户的话】：{user_message}\n\n"
             
-            # 处理上下文格式
+            # 处理对话上下文 - 更自然的方式
             if context and context.get('is_responding'):
-                user_prompt += self._build_context_prompt(context, conversation_mode)
-            elif context and context.get('buffett_reply'):
-                # 兼容旧格式 - 巴菲特先发言
-                user_prompt += f"""
-                巴菲特刚刚表达了观点：{context['buffett_reply']}
+                if context.get('last_speaker'):
+                    last_speaker = context['last_speaker']
+                    user_prompt += f"""
+【对话背景】：{last_speaker['agent_name']} 刚才说了：
+"{last_speaker['content']}"
+
+请睿智地参与这个对话，就像朋友间的理性交流。根据话题情境自动调整你的回复风格。
+                    """
                 
-                请从多元思维模型的角度分析这个问题，可以补充巴菲特的观点或提供不同的思维框架。
+                # 如果有完整的对话背景
+                if context.get('previous_speakers') and len(context['previous_speakers']) > 1:
+                    user_prompt += "\n【完整对话背景】：\n"
+                    for speaker in context['previous_speakers']:
+                        user_prompt += f"- {speaker['agent_name']}: {speaker['content'][:80]}...\n"
+                    user_prompt += "\n请从多元思维角度综合分析以上对话。\n"
+            elif context and context.get('buffett_reply'):
+                # 兼容旧格式
+                user_prompt += f"""
+【对话背景】：巴菲特刚才说了：
+"{context['buffett_reply']}"
+
+请自然地参与对话，根据话题深浅调整回复风格。
                 """
             elif context and context.get('soros_reply'):
-                # 兼容旧格式 - 索罗斯先发言
+                # 兼容旧格式
                 user_prompt += f"""
-                索罗斯刚刚表达了观点：{context['soros_reply']}
-                
-                请从多元思维模型的角度分析这个问题，可以补充索罗斯的观点或提供不同的思维框架。
+【对话背景】：索罗斯刚才说了：
+"{context['soros_reply']}"
+
+请自然地参与对话，根据话题深浅调整回复风格。
                 """
             
             # 调用LLM生成回复
@@ -128,7 +195,8 @@ class MungerAgent(BaseAgent):
                 "agent_id": self.agent_id,
                 "user_message": user_message,
                 "response": full_response,
-                "context": context
+                "context": context,
+                "style": "intelligent_adaptive"  # 标记为智能自适应风格
             })
             
             return full_response.strip()

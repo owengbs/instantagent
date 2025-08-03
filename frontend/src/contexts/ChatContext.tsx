@@ -86,11 +86,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 语音回调引用
   const onNewAIResponseRef = useRef<((response: string) => void) | null>(null)
   
-  // 语音队列管理
-  const speechQueueRef = useRef<Array<{content: string, agent?: string, audioData?: string, order?: number}>>([])
+  // 语音队列管理 - 重构版本
+  const speechQueueRef = useRef<Map<number, {content: string, agent?: string, audioData?: string, order: number, status: 'waiting' | 'ready' | 'playing' | 'completed' | 'error'}>>(new Map())
   const isSpeakingRef = useRef<boolean>(false)
+  const currentPlayingOrderRef = useRef<number>(1)
   const audioBufferRef = useRef<Map<string, {chunks: Array<string>, order: number, agent_name: string}>>(new Map())
   const audioContextRef = useRef<AudioContext | null>(null)
+  const retryCountRef = useRef<Map<number, number>>(new Map())
+  const MAX_RETRY_COUNT = 3
 
   // 连接 WebSocket
   const connect = useCallback(() => {
@@ -219,8 +222,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               })
               
-              // 多智能体文本回复：不再直接合成语音，等待后端发送音频
-              console.log('📝 收到多智能体文本，等待后端音频数据...')
+              // 初始化语音队列条目为等待状态
+              speechQueueRef.current.set(data.order, {
+                content: data.content,
+                agent: data.agent_name,
+                order: data.order,
+                status: 'waiting'
+              })
+              
+              console.log('📝 收到多智能体文本，已加入语音队列等待音频数据...')
               break
             
             case 'multi_agent_audio_chunk':
@@ -237,37 +247,44 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
               break
             
             case 'multi_agent_tts_complete':
-              // TTS完成，将完整音频加入播放队列
+              // TTS完成，将完整音频标记为就绪状态
               const completeAudioKey = `${data.agent_id}_${data.order}`
               const completeAudioBuffer = audioBufferRef.current.get(completeAudioKey)
               
               if (completeAudioBuffer) {
                 // 合并所有音频块
                 const fullAudioData = completeAudioBuffer.chunks.join('')
-                console.log(`✅ TTS完成，加入播放队列: ${data.agent_name}, order=${data.order}`)
+                console.log(`✅ TTS完成: ${data.agent_name}, order=${data.order}`)
                 
-                // 直接加入语音播放队列（已经是完整音频）
-                speechQueueRef.current.push({
-                  content: '', // 文本内容不需要了
-                  agent: data.agent_name,
-                  audioData: fullAudioData,
-                  order: data.order
-                })
-                
-                // 按order排序确保播放顺序
-                speechQueueRef.current.sort((a, b) => (a.order || 0) - (b.order || 0))
+                // 更新队列中对应条目的状态为ready
+                const queueItem = speechQueueRef.current.get(data.order)
+                if (queueItem) {
+                  queueItem.audioData = fullAudioData
+                  queueItem.status = 'ready'
+                  speechQueueRef.current.set(data.order, queueItem)
+                  
+                  console.log(`🎵 音频就绪: ${data.agent_name}, order=${data.order}`)
+                } else {
+                  console.warn(`⚠️ 找不到order=${data.order}的队列条目`)
+                }
                 
                 // 清理缓存
                 audioBufferRef.current.delete(completeAudioKey)
                 
-                console.log(`📋 语音队列状态:`, speechQueueRef.current.map(s => ({
-                  agent: s.agent,
-                  order: s.order,
-                  hasAudio: !!s.audioData
-                })))
+                // 显示当前队列状态
+                const queueStatus = Array.from(speechQueueRef.current.entries())
+                  .sort(([a], [b]) => a - b)
+                  .map(([order, item]) => ({
+                    order,
+                    agent: item.agent,
+                    status: item.status,
+                    hasAudio: !!item.audioData
+                  }))
                 
-                // 触发播放队列处理
-                processSpeechQueue()
+                console.log(`📋 语音队列状态:`, queueStatus)
+                
+                // 触发顺序播放处理
+                processSequentialSpeechQueue()
               }
               break
             
@@ -321,6 +338,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return
     }
 
+    // 重置语音队列状态（新对话开始）
+    console.log('🔄 重置语音队列状态')
+    speechQueueRef.current.clear()
+    isSpeakingRef.current = false
+    currentPlayingOrderRef.current = 1
+    retryCountRef.current.clear()
+    audioBufferRef.current.clear()
+
     // 添加用户消息
     const userMessage: Message = {
       id: generateId(),
@@ -371,6 +396,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 清空聊天
   const clearChat = useCallback(() => {
     dispatch({ type: 'CLEAR_MESSAGES' })
+    
+    // 重置语音队列状态
+    speechQueueRef.current.clear()
+    isSpeakingRef.current = false
+    currentPlayingOrderRef.current = 1
+    retryCountRef.current.clear()
+    audioBufferRef.current.clear()
+    
     // 可以在这里调用 API 清空服务端的对话历史
   }, [])
 
@@ -381,105 +414,188 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     storage.set('chat_preferences', updated)
   }, [preferences])
 
-  // 处理语音队列
-  const processSpeechQueue = useCallback(() => {
-    if (isSpeakingRef.current || speechQueueRef.current.length === 0) {
+  // 顺序播放语音队列 - 确保严格按order播放
+  const processSequentialSpeechQueue = useCallback(() => {
+    if (isSpeakingRef.current) {
+      console.log('🎵 当前正在播放，等待播放完成...')
       return
     }
     
-    const nextSpeech = speechQueueRef.current.shift()
-    if (nextSpeech) {
-      isSpeakingRef.current = true
-      console.log('🎵 开始播放语音队列:', {
-        agent: nextSpeech.agent || '未知',
-        hasAudioData: !!nextSpeech.audioData,
-        contentLength: nextSpeech.content.length,
-        queueLength: speechQueueRef.current.length
-      })
+    // 检查当前应该播放的order
+    const currentOrder = currentPlayingOrderRef.current
+    const currentItem = speechQueueRef.current.get(currentOrder)
+    
+    if (!currentItem) {
+      console.log(`🎵 没有找到order=${currentOrder}的语音`)
+      return
+    }
+    
+    if (currentItem.status === 'ready' && currentItem.audioData) {
+      // 当前order的音频已就绪，可以播放
+      console.log(`🎵 开始播放: ${currentItem.agent}, order=${currentOrder}`)
       
-      if (nextSpeech.audioData) {
-        // 直接播放预合成的音频数据
-        playAudioData(nextSpeech.audioData)
-      } else if (onNewAIResponseRef.current && nextSpeech.content) {
-        // 回退到文本合成播放
-        onNewAIResponseRef.current(nextSpeech.content)
-      }
+      currentItem.status = 'playing'
+      speechQueueRef.current.set(currentOrder, currentItem)
+      isSpeakingRef.current = true
+      
+      playAudioDataWithRetry(currentItem.audioData, currentOrder)
+      
+    } else if (currentItem.status === 'waiting') {
+      console.log(`⏳ 等待order=${currentOrder}的音频准备就绪: ${currentItem.agent}`)
+      
+    } else if (currentItem.status === 'error') {
+      console.log(`❌ order=${currentOrder}播放失败，跳到下一个`)
+      markCurrentItemCompleted()
+      
+    } else {
+      console.log(`🎵 order=${currentOrder}状态: ${currentItem.status}`)
     }
   }, [])
   
+  // 标记当前项目为完成并移动到下一个
+  const markCurrentItemCompleted = useCallback(() => {
+    const currentOrder = currentPlayingOrderRef.current
+    const currentItem = speechQueueRef.current.get(currentOrder)
+    
+    if (currentItem) {
+      currentItem.status = 'completed'
+      speechQueueRef.current.set(currentOrder, currentItem)
+      console.log(`✅ 完成播放: ${currentItem.agent}, order=${currentOrder}`)
+    }
+    
+    // 移动到下一个order
+    currentPlayingOrderRef.current++
+    isSpeakingRef.current = false
+    
+    // 继续处理下一个
+    setTimeout(() => processSequentialSpeechQueue(), 100)
+  }, [processSequentialSpeechQueue])
+  
   // 注释：addToSpeechQueue 已移除，改为直接在multi_agent_tts_complete中处理
   
-  // 语音播放完成回调
-  const onSpeechEnd = useCallback(() => {
-    isSpeakingRef.current = false
-    console.log('✅ 语音播放完成，继续处理队列')
-    processSpeechQueue()
-  }, [processSpeechQueue])
-  
-  // 直接播放音频数据
-  const playAudioData = useCallback(async (base64AudioData: string) => {
+  // 带重试功能的音频播放
+  const playAudioDataWithRetry = useCallback(async (base64AudioData: string, order: number) => {
+    const maxRetries = retryCountRef.current.get(order) || 0
+    
     try {
-      console.log('🎵 开始播放预合成音频数据（PCM格式）')
-      
-      // 初始化AudioContext
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
-      }
-      
-      const audioContext = audioContextRef.current
-      
-      // Base64 解码为 ArrayBuffer
-      const binaryString = atob(base64AudioData)
-      const bytes = new Uint8Array(binaryString.length)
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i)
-      }
-      
-      // Qwen TTS 返回的是PCM数据，需要转换为AudioBuffer
-      // 音频参数：24kHz, 16-bit, mono
-      const sampleRate = 24000
-      const numChannels = 1
-      const bytesPerSample = 2 // 16-bit = 2 bytes
-      
-      // 计算采样点数量
-      const numSamples = bytes.length / bytesPerSample
-      
-      // 创建AudioBuffer
-      const audioBuffer = audioContext.createBuffer(numChannels, numSamples, sampleRate)
-      const channelData = audioBuffer.getChannelData(0)
-      
-      // 将16-bit PCM数据转换为浮点数 (-1.0 到 1.0)
-      for (let i = 0; i < numSamples; i++) {
-        const byteIndex = i * bytesPerSample
-        // 读取16-bit little-endian
-        const sample = (bytes[byteIndex + 1] << 8) | bytes[byteIndex]
-        // 转换为有符号16-bit
-        const signedSample = sample > 32767 ? sample - 65536 : sample
-        // 归一化到 -1.0 到 1.0
-        channelData[i] = signedSample / 32768.0
-      }
-      
-      // 创建音频源
-      const source = audioContext.createBufferSource()
-      source.buffer = audioBuffer
-      source.connect(audioContext.destination)
-      
-      // 播放结束后的处理
-      source.onended = () => {
-        console.log('✅ 预合成音频播放完成')
-        isSpeakingRef.current = false
-        processSpeechQueue() // 继续播放队列中的下一个
-      }
-      
-      // 开始播放
-      source.start(0)
-      console.log('🎵 预合成音频开始播放，采样数:', numSamples)
+      await playAudioData(base64AudioData)
+      // 播放成功，标记完成
+      markCurrentItemCompleted()
       
     } catch (error) {
-      console.error('❌ 播放预合成音频失败:', error)
-      isSpeakingRef.current = false
-      processSpeechQueue() // 继续处理队列
+      console.error(`❌ order=${order}播放失败:`, error)
+      
+      if (maxRetries < MAX_RETRY_COUNT) {
+        // 重试播放
+        const newRetryCount = maxRetries + 1
+        retryCountRef.current.set(order, newRetryCount)
+        console.log(`🔄 重试播放order=${order}, 第${newRetryCount}次重试`)
+        
+        setTimeout(() => {
+          isSpeakingRef.current = false
+          playAudioDataWithRetry(base64AudioData, order)
+        }, 1000 * newRetryCount) // 递增延迟
+        
+      } else {
+        // 重试次数用完，标记为错误并跳过
+        console.error(`❌ order=${order}播放失败，已达最大重试次数`)
+        const currentItem = speechQueueRef.current.get(order)
+        if (currentItem) {
+          currentItem.status = 'error'
+          speechQueueRef.current.set(order, currentItem)
+        }
+        
+        isSpeakingRef.current = false
+        markCurrentItemCompleted()
+      }
     }
+  }, [markCurrentItemCompleted])
+  
+  // 语音播放完成回调（保留兼容性）
+  const onSpeechEnd = useCallback(() => {
+    console.log('✅ 传统语音播放完成')
+    markCurrentItemCompleted()
+  }, [markCurrentItemCompleted])
+  
+  // 直接播放音频数据
+  const playAudioData = useCallback(async (base64AudioData: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log('🎵 开始播放预合成音频数据（PCM格式）')
+        
+        // 初始化AudioContext
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+        }
+        
+        const audioContext = audioContextRef.current
+        
+        // 确保AudioContext已恢复
+        if (audioContext.state === 'suspended') {
+          audioContext.resume()
+        }
+        
+        // Base64 解码为 ArrayBuffer
+        const binaryString = atob(base64AudioData)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        
+        // Qwen TTS 返回的是PCM数据，需要转换为AudioBuffer
+        // 音频参数：24kHz, 16-bit, mono
+        const sampleRate = 24000
+        const numChannels = 1
+        const bytesPerSample = 2 // 16-bit = 2 bytes
+        
+        // 计算采样点数量
+        const numSamples = bytes.length / bytesPerSample
+        
+        if (numSamples === 0) {
+          throw new Error('音频数据为空')
+        }
+        
+        // 创建AudioBuffer
+        const audioBuffer = audioContext.createBuffer(numChannels, numSamples, sampleRate)
+        const channelData = audioBuffer.getChannelData(0)
+        
+        // 将16-bit PCM数据转换为浮点数 (-1.0 到 1.0)
+        for (let i = 0; i < numSamples; i++) {
+          const byteIndex = i * bytesPerSample
+          // 读取16-bit little-endian
+          const sample = (bytes[byteIndex + 1] << 8) | bytes[byteIndex]
+          // 转换为有符号16-bit
+          const signedSample = sample > 32767 ? sample - 65536 : sample
+          // 归一化到 -1.0 到 1.0
+          channelData[i] = signedSample / 32768.0
+        }
+        
+        // 创建音频源
+        const source = audioContext.createBufferSource()
+        source.buffer = audioBuffer
+        source.connect(audioContext.destination)
+        
+        // 播放结束后的处理
+        source.onended = () => {
+          console.log('✅ 预合成音频播放完成')
+          resolve()
+        }
+        
+        // 开始播放
+        source.start(0)
+        console.log('🎵 预合成音频开始播放，采样数:', numSamples)
+        
+        // 设置播放超时（防止永久卡住）
+        const timeout = Math.max(5000, (numSamples / sampleRate) * 1000 + 2000) // 音频长度 + 2秒缓冲
+        setTimeout(() => {
+          reject(new Error('音频播放超时'))
+        }, timeout)
+        
+      } catch (error) {
+        console.error('❌ 准备播放音频失败:', error)
+        reject(error)
+      }
+    })
   }, [])
 
   // 设置新AI回复的回调

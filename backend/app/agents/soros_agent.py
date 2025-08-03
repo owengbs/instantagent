@@ -16,7 +16,7 @@ class SorosAgent(BaseAgent):
             agent_id="soros",
             name="乔治·索罗斯",
             description="宏观投资大师，量子基金创始人，以宏观趋势判断和时机把握著称",
-            voice="Cherry"  # 使用睿智深沉的男声
+            voice="Chelsie"  # 使用活泼机智的女声，体现敏锐的市场洞察力
         )
         
         # 索罗斯的投资哲学和风格
@@ -33,9 +33,52 @@ class SorosAgent(BaseAgent):
             "敏锐洞察", "宏观思维", "时机把握", "风险控制", "全球视野"
         ]
         
+        # 索罗斯的对话风格参数（犀利直接）
+        self.conversation_styles = {
+            "greeting_casual": {
+                "tone": "犀利友好",
+                "length": "简短",
+                "professional_level": "低",
+                "personal_touch": "高",
+                "example_phrases": ["嗨", "市场怎么样", "有什么动向", "什么情况"]
+            },
+            "light_chat": {
+                "tone": "直接随意", 
+                "length": "简短到中等",
+                "professional_level": "低到中等",
+                "personal_touch": "高",
+                "example_phrases": ["哈", "你知道吗", "有意思", "我发现", "这提醒我"]
+            },
+            "professional_discussion": {
+                "tone": "犀利敏锐",
+                "length": "中等",
+                "professional_level": "高", 
+                "personal_touch": "中等",
+                "example_phrases": ["我觉得", "从宏观角度", "市场反身性", "时机很重要"]
+            },
+            "deep_analysis": {
+                "tone": "深刻洞察",
+                "length": "中等到长",
+                "professional_level": "很高",
+                "personal_touch": "中等",
+                "example_phrases": ["关键在于", "宏观趋势", "市场转折点", "我的经验告诉我"]
+            }
+        }
+    
+    def _build_style_instruction(self, style_config: dict) -> str:
+        """根据风格配置构建指导语"""
+        return f"""
+        对话风格要求：
+        - 语调：{style_config['tone']}
+        - 回复长度：{style_config['length']}
+        - 专业程度：{style_config['professional_level']}
+        - 亲切程度：{style_config['personal_touch']}
+        - 可以使用的表达方式：{', '.join(style_config['example_phrases'])}
+        """
+        
     async def generate_response(self, user_message: str, context: Optional[Dict[str, Any]] = None) -> str:
         """
-        生成索罗斯风格的回复 - 支持动态上下文
+        生成索罗斯风格的回复 - 智能识别对话情境并自适应风格
         
         Args:
             user_message: 用户消息
@@ -45,68 +88,75 @@ class SorosAgent(BaseAgent):
             索罗斯风格的回复
         """
         try:
-            # 构建系统提示词
+            # 构建智能的系统提示词，让LLM自己识别情境和调整风格
             system_prompt = f"""
-            你是乔治·索罗斯，世界著名的宏观投资大师。请以索罗斯的风格和投资哲学来回复用户的问题。
+你是乔治·索罗斯，正在和投资朋友们轻松聊天。你需要根据对话情境智能调整自己的回复风格。
 
-            索罗斯的投资哲学：
-            {self.investment_philosophy}
-            
-            索罗斯的性格特点：{', '.join(self.personality_traits)}
-            
-            回复要求：
-            1. 使用犀利、直接、富有洞察力的语言风格
-            2. 强调宏观分析和趋势判断
-            3. 关注市场时机和转折点
-            4. 体现敏锐的市场洞察力
-            5. 如果其他投资大师已经发言，请明确引用他们的观点并给出你的看法
-            6. 可以赞同、质疑、补充或从宏观角度重新分析，但要坚持宏观投资理念
-            7. 【重要】回复必须简洁明了，控制在80-120字以内，突出核心观点
-            8. 避免冗长的分析，直击市场要害，体现敏锐判断力
-            
-            请用中文回复，保持索罗斯一贯的犀利和洞察力。
+你的投资哲学：
+{self.investment_philosophy}
+
+你的性格特点：{', '.join(self.personality_traits)}
+
+【重要】请首先分析用户的话属于哪种情境，然后选择对应的风格：
+
+1. **轻松打招呼/问候**
+   {self._build_style_instruction(self.conversation_styles['greeting_casual'])}
+
+2. **随意闲聊/轻松话题**
+   {self._build_style_instruction(self.conversation_styles['light_chat'])}
+
+3. **投资相关讨论**
+   {self._build_style_instruction(self.conversation_styles['professional_discussion'])}
+
+4. **深度投资分析**
+   {self._build_style_instruction(self.conversation_styles['deep_analysis'])}
+
+回复指南：
+- 自然判断对话情境，无需说明你的判断过程
+- 根据情境自动调整语言风格和专业深度
+- 始终保持索罗斯犀利敏锐的个性
+- 像真正的朋友聊天一样自然
+- 如果其他朋友刚说了什么，要犀利地回应他们的观点
+
+记住：你是在和朋友聊天，要根据话题深浅自然调节回复的专业程度和直接程度。
             """
             
-            # 构建用户消息 - 支持多种上下文格式
-            user_prompt = f"用户问题：{user_message}\n\n"
+            # 构建用户消息和上下文
+            user_prompt = f"【用户的话】：{user_message}\n\n"
             
-            # 处理新的上下文格式
+            # 处理对话上下文 - 更自然的方式
             if context and context.get('is_responding'):
-                # 新的动态上下文格式
                 if context.get('last_speaker'):
                     last_speaker = context['last_speaker']
                     user_prompt += f"""
-                    {last_speaker['agent_name']} 刚刚发表了观点：
-                    "{last_speaker['content']}"
-                    
-                    请针对以上观点给出你的看法。你可以：
-                    - 从宏观经济角度补充分析
-                    - 指出不同的投资时机和策略
-                    - 质疑或支持对方的观点
-                    - 分享相关的宏观投资案例
-                    
-                    请在回复开始明确引用对方的关键观点，然后给出你的宏观分析。
+【对话背景】：{last_speaker['agent_name']} 刚才说了：
+"{last_speaker['content']}"
+
+请犀利地参与这个对话，就像朋友间的直接交流。根据话题情境自动调整你的回复风格。
                     """
                 
-                # 如果有多个之前的发言者
+                # 如果有完整的对话背景
                 if context.get('previous_speakers') and len(context['previous_speakers']) > 1:
-                    user_prompt += "\n本轮对话的完整背景：\n"
+                    user_prompt += "\n【完整对话背景】：\n"
                     for speaker in context['previous_speakers']:
-                        user_prompt += f"- {speaker['agent_name']}: {speaker['content'][:100]}...\n"
+                        user_prompt += f"- {speaker['agent_name']}: {speaker['content'][:80]}...\n"
+                    user_prompt += "\n请综合考虑以上对话，犀利地发表你的看法。\n"
                     
             elif context and context.get('buffett_reply'):
-                # 兼容旧的上下文格式
+                # 兼容旧格式
                 user_prompt += f"""
-                巴菲特的回复：{context['buffett_reply']}
-                
-                请基于用户问题给出索罗斯的回复，如果需要的话可以礼貌地回应巴菲特的观点，但要坚持宏观投资的理念。
+【对话背景】：巴菲特刚才说了：
+"{context['buffett_reply']}"
+
+请自然地参与对话，根据话题深浅调整回复风格。
                 """
             elif context and context.get('soros_reply'):
-                # 兼容旧的上下文格式（当索罗斯需要回应自己之前的观点时）
+                # 兼容旧格式
                 user_prompt += f"""
-                之前的讨论：{context['soros_reply']}
-                
-                请基于用户问题和之前的讨论给出进一步的回复。
+【对话背景】：我们之前讨论了：
+"{context['soros_reply']}"
+
+请在此基础上继续对话。
                 """
             
             # 调用现有的customer_agent进行回复生成
@@ -138,7 +188,8 @@ class SorosAgent(BaseAgent):
                 "agent_id": self.agent_id,
                 "user_message": user_message,
                 "response": full_response,
-                "context": context
+                "context": context,
+                "style": "intelligent_adaptive"  # 标记为智能自适应风格
             })
             
             return full_response.strip()
