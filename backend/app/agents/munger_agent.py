@@ -170,14 +170,10 @@ class MungerAgent(BaseAgent):
                 """
             
             # 调用LLM生成回复
-            from .customer_agent import customer_agent
+            from ..utils.llm_client import llm_client
             full_prompt = f"{system_prompt}\n\n{user_prompt}"
             
-            response_stream = customer_agent.chat_stream(
-                message=full_prompt,
-                user_id="munger_agent", 
-                session_id="munger_session"
-            )
+            response_stream = llm_client.chat_stream(message=full_prompt)
             
             # 收集流式回复
             full_response = ""

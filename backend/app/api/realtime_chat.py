@@ -13,7 +13,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 
-from ..agents.customer_agent import customer_agent
+# 移除了customer_agent依赖，现在只支持多智能体模式
 from ..agents.agent_manager import agent_manager
 from ..services.qwen_tts_realtime import qwen_tts_realtime
 from ..services.qwen_asr_realtime import qwen_asr_realtime
@@ -224,93 +224,13 @@ class RealtimeChatManager:
                 del session["audio_queue"]
     
     async def process_streaming_chat(self, client_id: str, user_message: str):
-        """处理流式对话"""
-        try:
-            session = self.user_sessions.get(client_id, {})
-            voice = session.get("voice", "Cherry")
-            
-            logger.info(f"🌊 开始处理流式对话: client_id={client_id}, message='{user_message}', voice={voice}")
-            
-            # 发送处理开始事件
-            await self.send_message(client_id, {
-                "type": "processing_start",
-                "timestamp": datetime.now().isoformat()
-            })
-            
-            # 文本累积器和TTS队列
-            text_buffer = ""
-            sentence_count = 0
-            
-            # 创建AI流式回复生成器
-            ai_stream = customer_agent.chat_stream(
-                message=user_message,
-                user_id=client_id,
-                session_id=session.get("session_id", "default")
-            )
-            
-            # 处理AI流式回复
-            async for ai_chunk in ai_stream:
-                if not ai_chunk:
-                    continue
-                
-                # 发送AI文本片段（原始内容用于显示）
-                await self.send_message(client_id, {
-                    "type": "ai_text_chunk",
-                    "content": ai_chunk,
-                    "timestamp": datetime.now().isoformat()
-                })
-                
-                # 累积文本
-                text_buffer += ai_chunk
-                
-                # 检查是否可以进行TTS合成
-                sentences = await self._extract_sentences(text_buffer)
-                
-                # 对新句子进行TTS合成
-                for sentence in sentences:
-                    if sentence.strip():
-                        sentence_count += 1
-                        
-                        # 清理文本，使其适合TTS
-                        cleaned_sentence = text_cleaner.clean_for_tts(sentence)
-                        
-                        logger.info(f"🎵 开始TTS合成句子 {sentence_count}: 原始='{sentence[:30]}...', 清理后='{cleaned_sentence[:30]}...'")
-                        
-                        # 异步TTS合成，不阻塞AI生成
-                        asyncio.create_task(
-                            self._synthesize_and_send_audio(client_id, cleaned_sentence, voice, sentence_count)
-                        )
-                
-                # 更新缓冲区（移除已处理的句子）
-                for sentence in sentences:
-                    text_buffer = text_buffer.replace(sentence, "", 1)
-            
-            # 处理剩余的文本
-            if text_buffer.strip():
-                sentence_count += 1
-                
-                # 清理剩余文本
-                cleaned_remaining = text_cleaner.clean_for_tts(text_buffer)
-                
-                logger.info(f"🎵 处理剩余文本: 原始='{text_buffer[:30]}...', 清理后='{cleaned_remaining[:30]}...'")
-                await self._synthesize_and_send_audio(client_id, cleaned_remaining, voice, sentence_count)
-            
-            # 发送处理完成事件
-            await self.send_message(client_id, {
-                "type": "processing_complete",
-                "total_sentences": sentence_count,
-                "timestamp": datetime.now().isoformat()
-            })
-            
-            logger.info(f"✅ 流式对话处理完成: client_id={client_id}, 总句子数={sentence_count}")
-            
-        except Exception as e:
-            logger.error(f"❌ 流式对话处理失败: client_id={client_id}, error={e}")
-            await self.send_message(client_id, {
-                "type": "error",
-                "message": "对话处理失败，请重试",
-                "timestamp": datetime.now().isoformat()
-            })
+        """
+        处理流式对话 - 已弃用，重定向到多智能体模式
+        为保持向后兼容性而保留
+        """
+        logger.info(f"⚠️ 单智能体模式已弃用，自动转换为多智能体模式: client_id={client_id}")
+        # 自动转换为多智能体模式
+        await self.process_multi_agent_chat(client_id, user_message)
     
     async def process_multi_agent_chat(self, client_id: str, user_message: str):
         """处理多智能体对话"""
@@ -617,15 +537,11 @@ async def handle_realtime_message(client_id: str, message: dict):
     if message_type == "chat":
         # 处理聊天消息
         user_message = message.get("message", "").strip()
-        chat_mode = message.get("chat_mode", "single")  # 默认单智能体模式
+        chat_mode = message.get("chat_mode", "multi_agent")  # 默认多智能体模式
         
         if user_message:
-            if chat_mode == "multi_agent":
-                # 多智能体模式
-                await realtime_manager.process_multi_agent_chat(client_id, user_message)
-            else:
-                # 单智能体模式（保持向后兼容）
-                await realtime_manager.process_streaming_chat(client_id, user_message)
+            # 现在总是使用多智能体模式
+            await realtime_manager.process_multi_agent_chat(client_id, user_message)
         else:
             await realtime_manager.send_message(client_id, {
                 "type": "error",

@@ -159,18 +159,14 @@ class BuffettAgent(BaseAgent):
 请在此基础上继续对话。
                 """
             
-            # 调用现有的customer_agent进行回复生成
-            from .customer_agent import customer_agent
+            # 调用LLM进行回复生成
+            from ..utils.llm_client import llm_client
             
             # 构建完整的提示词
             full_prompt = f"{system_prompt}\n\n{user_prompt}"
             
-            # 使用customer_agent的聊天功能生成回复
-            response_stream = customer_agent.chat_stream(
-                message=full_prompt,
-                user_id="buffett_agent",
-                session_id="buffett_session"
-            )
+            # 使用简化LLM客户端生成回复
+            response_stream = llm_client.chat_stream(message=full_prompt)
             
             # 收集流式回复
             full_response = ""

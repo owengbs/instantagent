@@ -16,11 +16,7 @@ class QwenConfig(BaseModel):
     max_tokens: int = 2048  # 增加token限制以支持更长的回复
 
 
-class DatabaseConfig(BaseModel):
-    """数据库配置"""
-    chroma_persist_directory: str = "./data/chroma_db"
-    knowledge_base_path: str = "./data/knowledge"
-    collection_name: str = "trading_knowledge"
+# 移除了原有的数据库配置，现在只需要LLM配置
 
 
 class AgentConfig(BaseModel):
@@ -52,7 +48,7 @@ class Settings(BaseSettings):
     """应用设置"""
     
     # 应用基础配置
-    app_name: str = "Trading Customer Agent"
+    app_name: str = "Investment Masters Roundtable"
     app_version: str = "1.0.0"
     debug: bool = True
     host: str = "0.0.0.0"
@@ -70,7 +66,6 @@ class Settings(BaseSettings):
     
     # 子配置
     qwen: QwenConfig = QwenConfig()
-    database: DatabaseConfig = DatabaseConfig()
     agent: AgentConfig = AgentConfig()
     
     class Config:
@@ -85,8 +80,6 @@ settings = Settings()
 def ensure_directories():
     """确保必要的目录存在"""
     directories = [
-        settings.database.chroma_persist_directory,
-        settings.database.knowledge_base_path,
         "./data",
         "./logs"
     ]

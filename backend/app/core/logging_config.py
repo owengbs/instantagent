@@ -61,7 +61,7 @@ def setup_logging():
     logging.getLogger("app.utils.logging_decorator").setLevel(logging.INFO)
     logging.getLogger("app.services.qwen_asr_realtime").setLevel(logging.INFO)
     logging.getLogger("app.services.qwen_tts_realtime").setLevel(logging.INFO)
-    logging.getLogger("app.agents.customer_agent").setLevel(logging.INFO)
+    logging.getLogger("app.utils.llm_client").setLevel(logging.INFO)
     
     print(f"📝 日志配置完成")
     print(f"   📄 控制台输出: INFO级别及以上")
