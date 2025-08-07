@@ -45,7 +45,7 @@ const DebugMentorTest: React.FC = () => {
         <h2 className="text-lg font-semibold mb-2">选中的导师</h2>
         {selectedMentors.length > 0 ? (
           <div className="space-y-2">
-            {selectedMentors.map((mentor, index) => (
+            {selectedMentors.map((mentor) => (
               <div key={mentor.id} className="flex items-center space-x-2">
                 <div 
                   className="w-4 h-4 rounded-full"
