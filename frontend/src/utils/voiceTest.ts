@@ -373,7 +373,7 @@ export async function runCompleteVoiceTest() {
  */
 function generateRecommendations(
   capabilities: VoiceCapabilities, 
-  synthesisResult: VoiceTestResult, 
+  _synthesisResult: VoiceTestResult, 
   micResult: VoiceTestResult
 ): string[] {
   const recommendations: string[] = []

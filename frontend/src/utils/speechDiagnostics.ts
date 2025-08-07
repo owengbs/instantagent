@@ -251,5 +251,5 @@ function generateSpeechRecommendations(
 // 挂载到全局
 if (typeof window !== 'undefined') {
   (window as any).runFullSpeechDiagnosis = runFullSpeechDiagnosis
-  (window as any).testSpeechPlayback = (text = '测试') => testSpeechSynthesisPlayback(text)
+  ;(window as any).testSpeechPlayback = (text: string = '测试') => testSpeechSynthesisPlayback(text)
 } 

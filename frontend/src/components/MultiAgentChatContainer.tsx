@@ -3,16 +3,7 @@ import MessageBubble from './MessageBubble';
 import AgentAvatar from './AgentAvatar';
 import { useChat } from '../contexts/ChatContext';
 
-interface MultiAgentMessage {
-  type: 'user' | 'buffett' | 'soros' | 'munger' | 'multi_agent_response';
-  agent_id: string;
-  agent_name?: string;
-  content: string;
-  timestamp: string;
-  order?: number;
-  is_first_speaker?: boolean;
-  speaking_order?: string[];
-}
+
 
 interface MultiAgentChatContainerProps {
   className?: string;

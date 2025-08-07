@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Volume2, VolumeX, Zap, Settings, Wifi, WifiOff } from 'lucide-react'
 import { useRealtimeChat } from '../hooks/useRealtimeChat'
@@ -9,7 +9,7 @@ interface RealtimeVoiceChatProps {
   onToggle?: () => void
 }
 
-const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled, onToggle }) => {
+const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled }) => {
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [selectedVoice, setSelectedVoice] = useState('Cherry')
@@ -18,8 +18,7 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled, onToggl
   // 使用Qwen语音识别
   const {
     startListening,
-    stopListening,
-    error: asrError
+    stopListening
   } = useQwenSpeechRecognition({
     onResult: (text, isFinal) => {
       console.log('🎤 RealtimeVoiceChat 收到ASR结果:', { text, isFinal })
@@ -51,9 +50,6 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled, onToggl
     error,
     sendMessage,
     setVoice,
-    startASR,
-    stopASR,
-    sendAudioData,
     aiTextBuffer,
     isProcessing,
     isSpeaking

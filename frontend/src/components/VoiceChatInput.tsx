@@ -9,7 +9,6 @@ import { ChatInputProps } from '../types'
 
 interface VoiceChatInputProps extends ChatInputProps {
   autoSpeak?: boolean
-  showTextInput?: boolean
   onVoiceToggle?: (isVoiceMode: boolean) => void
 }
 
@@ -18,7 +17,6 @@ const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
   disabled = false,
   placeholder = "点击麦克风说话...",
   autoSpeak = true,
-  showTextInput = true,
   onVoiceToggle
 }) => {
   const [isVoiceMode, setIsVoiceMode] = useState(true)

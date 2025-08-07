@@ -37,7 +37,7 @@ class RealtimeAudioPlayer {
     this.sampleRate = sampleRate
   }
 
-  async addAudioChunk(sequence: number, chunkIndex: number, audioData: string): Promise<void> {
+  async addAudioChunk(sequence: number, _chunkIndex: number, audioData: string): Promise<void> {
     try {
       // 解码base64音频数据
       const audioBytes = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
@@ -139,7 +139,7 @@ export const useRealtimeChat = (options: RealtimeChatOptions = {}): RealtimeChat
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [aiTextBuffer, setAiTextBuffer] = useState('')
-  const [currentSentences, setCurrentSentences] = useState<string[]>([])
+  const [currentSentences] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
 

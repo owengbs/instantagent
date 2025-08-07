@@ -36,10 +36,7 @@ const AgentAvatar: React.FC<AgentAvatarProps> = ({
     lg: 'text-base'
   };
 
-  // 默认头像内容（如果没有图片）
-  const getInitials = (name: string) => {
-    return name.split(' ').map(word => word[0]).join('').slice(0, 2);
-  };
+
 
   const getAvatarContent = () => {
     if (agent.id === 'user') {

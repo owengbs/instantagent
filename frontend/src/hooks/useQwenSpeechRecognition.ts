@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useChat } from '../contexts/ChatContext'
 import { useQwenTTS } from './useQwenTTS'
 
@@ -281,7 +281,7 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
   const { sendMessage } = useChat()
   
   // 获取TTS功能
-  const { speak, isSpeaking } = useQwenTTS({
+  const { speak } = useQwenTTS({
     voice: 'Cherry',
     onStart: () => console.log('🔊 TTS开始播放'),
     onEnd: () => {

@@ -5,7 +5,7 @@ import { MessageBubbleProps } from '../types'
 import { formatTime, copyToClipboard } from '../utils'
 import AgentAvatar from './AgentAvatar'
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage, className = '' }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, className = '' }) => {
   const isUser = message.type === 'user'
   const isAssistant = message.type === 'assistant'
   const isMultiAgent = message.isMultiAgent
