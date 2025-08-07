@@ -24,7 +24,9 @@ interface QwenTTSReturn {
   isLoading: boolean
 }
 
-const API_BASE_URL = 'http://localhost:8000/api/tts'
+import { API_CONFIG } from '../config/api'
+
+const API_BASE_URL = API_CONFIG.endpoints.tts()
 
 // Web Audio API 上下文
 let audioContext: AudioContext | null = null

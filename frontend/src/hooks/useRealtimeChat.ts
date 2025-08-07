@@ -22,7 +22,9 @@ interface RealtimeChatReturn {
   isSpeaking: boolean
 }
 
-const API_BASE_URL = 'ws://localhost:8000/api/realtime/ws'
+import { API_CONFIG } from '../config/api'
+
+const API_BASE_URL = API_CONFIG.endpoints.realtimeWs()
 
 // 音频播放器类
 class RealtimeAudioPlayer {

@@ -23,9 +23,9 @@ interface QwenSpeechRecognitionReturn {
   resetTranscript: () => void
 }
 
-const API_BASE_URL = process.env.NODE_ENV === 'development' 
-  ? 'ws://localhost:8000/api/asr/ws'
-  : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/asr/ws`
+import { API_CONFIG } from '../config/api'
+
+const API_BASE_URL = API_CONFIG.endpoints.asrWs()
 
 // Web Audio API 音频采集器
 class AudioRecorder {

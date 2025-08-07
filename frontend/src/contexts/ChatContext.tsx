@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react'
 import { ChatContextType, ChatState, Message, UserPreferences } from '../types'
 import { generateId, storage } from '../utils'
+import { API_CONFIG } from '../config/api'
 
 // 初始状态
 const initialState: ChatState = {
@@ -102,11 +103,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const host = process.env.NODE_ENV === 'development' 
-        ? 'localhost:8000' 
-        : window.location.host
-      const wsUrl = `${protocol}//${host}/api/realtime/ws/${state.sessionId}`
+      const wsUrl = API_CONFIG.endpoints.chatWs(state.sessionId)
 
       wsRef.current = new WebSocket(wsUrl)
 
