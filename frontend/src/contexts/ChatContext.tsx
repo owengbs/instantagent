@@ -111,6 +111,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'SET_CONNECTED', payload: true })
         dispatch({ type: 'SET_ERROR', payload: null })
         console.log('WebSocket 连接已建立')
+        
+        // 发送选中的导师信息到后端
+        const selectedMentors = localStorage.getItem('selectedMentors')
+        if (selectedMentors) {
+          try {
+            const mentors = JSON.parse(selectedMentors)
+            const mentorIds = mentors.map((mentor: any) => mentor.id)
+            console.log('🎯 发送选中的导师信息到后端:', mentorIds)
+            console.log('📋 导师详细信息:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
+            
+            wsRef.current?.send(JSON.stringify({
+              type: 'set_selected_mentors',
+              mentors: mentorIds
+            }))
+          } catch (error) {
+            console.error('❌ 解析选中的导师信息失败:', error)
+          }
+        } else {
+          console.log('⚠️ 未找到选中的导师信息')
+        }
       }
 
       wsRef.current.onmessage = (event) => {
@@ -201,7 +221,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 type: 'ADD_MESSAGE',
                 payload: {
                   id: generateId(),
-                  type: data.agent_id as 'buffett' | 'soros' | 'munger',
+                  type: 'multi_agent_response', // 保持消息类型为multi_agent_response
                   content: data.content,
                   timestamp: data.timestamp || new Date().toISOString(),
                   agent_id: data.agent_id,
@@ -212,9 +232,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     id: data.agent_id,
                     name: data.agent_name || '未知智能体',
                     description: data.agent_id === 'buffett' ? '价值投资大师' : 
-                                data.agent_id === 'soros' ? '宏观投资大师' : '多元思维专家',
+                                data.agent_id === 'soros' ? '宏观投资大师' : 
+                                data.agent_id === 'munger' ? '多元思维专家' :
+                                data.agent_id === 'krugman' ? '宏观经济专家' : '投资导师',
                     color: data.agent_id === 'buffett' ? '#3B82F6' : 
-                           data.agent_id === 'soros' ? '#10B981' : '#8B5CF6'
+                           data.agent_id === 'soros' ? '#10B981' : 
+                           data.agent_id === 'munger' ? '#8B5CF6' :
+                           data.agent_id === 'krugman' ? '#F59E0B' : '#6B7280'
                   }
                 }
               })

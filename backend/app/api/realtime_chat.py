@@ -238,6 +238,13 @@ class RealtimeChatManager:
             session = self.user_sessions.get(client_id, {})
             session_id = session.get("session_id", f"multi_agent_{client_id}")
             
+            # 获取前端选择的导师信息
+            selected_mentors = session.get("selected_mentors", [])
+            if selected_mentors:
+                logger.info(f"🎯 使用前端选择的导师: {selected_mentors}")
+            else:
+                logger.info("🎯 未找到前端选择的导师，使用默认智能体")
+            
             logger.info(f"🌊 开始处理多智能体对话: client_id={client_id}, message='{user_message[:50]}...'")
             
             # 发送处理开始事件
@@ -246,11 +253,12 @@ class RealtimeChatManager:
                 "timestamp": datetime.now().isoformat()
             })
             
-            # 调用智能体管理器处理多智能体对话
+            # 调用智能体管理器处理多智能体对话，传递选中的导师信息
             agent_responses = await agent_manager.process_multi_agent_conversation(
                 user_message=user_message,
                 session_id=session_id,
-                user_id=client_id
+                user_id=client_id,
+                selected_mentors=selected_mentors
             )
             
             # 优化：并行合成所有语音，串行播放
@@ -546,6 +554,18 @@ async def handle_realtime_message(client_id: str, message: dict):
             await realtime_manager.send_message(client_id, {
                 "type": "error",
                 "message": "消息内容不能为空"
+            })
+    
+    elif message_type == "set_selected_mentors":
+        # 设置选中的导师
+        selected_mentors = message.get("mentors", [])
+        if client_id in realtime_manager.user_sessions:
+            realtime_manager.user_sessions[client_id]["selected_mentors"] = selected_mentors
+            logger.info(f"🎯 设置选中的导师: client_id={client_id}, mentors={selected_mentors}")
+            await realtime_manager.send_message(client_id, {
+                "type": "mentors_set",
+                "mentors": selected_mentors,
+                "timestamp": datetime.now().isoformat()
             })
     
     elif message_type == "asr_start":

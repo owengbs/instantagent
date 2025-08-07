@@ -15,6 +15,7 @@ from app.utils.llm_client import llm_client
 from app.api.tts import router as tts_router
 from app.api.realtime_chat import router as realtime_router
 from app.api.asr_websocket import router as asr_ws_router
+from app.api.mentors import router as mentors_router
 
 
 @asynccontextmanager
@@ -68,6 +69,7 @@ app.add_middleware(
 app.include_router(tts_router, prefix="/api")
 app.include_router(realtime_router, prefix="/api")
 app.include_router(asr_ws_router, prefix="/api")
+app.include_router(mentors_router, prefix="/api")
 
 
 @app.get("/")

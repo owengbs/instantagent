@@ -35,6 +35,28 @@ class MungerAgent(BaseAgent):
             "理性冷静", "跨学科思维", "逆向思考", "实用主义", "终身学习"
         ]
         
+        # 芒格的专业领域
+        self.expertise = [
+            "多元思维", "跨学科分析", "逆向思考", "认知偏差", "心理学",
+            "经济学", "数学", "哲学", "决策理论", "学习理论"
+        ]
+        
+        # 芒格的投资风格
+        self.investment_style = "多元思维投资"
+        
+        # 芒格的经典名言
+        self.famous_quotes = [
+            "获得智慧是一种道德责任",
+            "如果你想要说服别人，要诉诸利益，而非理性",
+            "学会学习如何正确地思考，这是最重要的技能",
+            "避免愚蠢比追求聪明更重要",
+            "简单是复杂的最终形式"
+        ]
+        
+        # 芒格的背景信息
+        self.title = "伯克希尔·哈撒韦副主席"
+        self.background = "律师出身，以跨学科思维著称。与巴菲特合作超过50年，被称为行走的书库。"
+        
         # 芒格的对话风格参数（睿智哲理）
         self.conversation_styles = {
             "greeting_casual": {
@@ -261,8 +283,12 @@ class MungerAgent(BaseAgent):
         return {
             "agent_id": self.agent_id,
             "name": self.name,
+            "title": self.title,
             "description": self.description,
             "voice": self.voice,
-            "specialties": self.thinking_models,
-            "philosophy": "运用多元思维模型，避免认知偏差，坚持长期理性投资"
+            "expertise": self.expertise,
+            "personality_traits": self.personality_traits,
+            "investment_style": self.investment_style,
+            "famous_quotes": self.famous_quotes,
+            "background": self.background
         }

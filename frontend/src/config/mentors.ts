@@ -98,15 +98,17 @@ export const DEFAULT_MENTORS: Mentor[] = [
     name: '保罗·克鲁格曼',
     title: '诺贝尔经济学奖得主',
     description: '新贸易理论和新经济地理学创始人，经济政策分析专家',
-    expertise: ['宏观经济学', '国际贸易', '货币政策', '经济周期'],
+    expertise: ['宏观经济学', '国际贸易', '货币政策', '经济周期', '新贸易理论', '新经济地理学', '经济政策分析', '金融危机'],
     avatar: generateAvatarUrl('paul-krugman', 'croodles'),
     color: MENTOR_COLORS.orange,
-    personalityTraits: ['学术严谨', '批判思维', '数据驱动', '政策敏感'],
+    personalityTraits: ['学术严谨', '批判思维', '数据驱动', '政策敏感', '理性分析', '证据导向', '直言不讳', '深度思考'],
     investmentStyle: '宏观经济分析',
     famousQuotes: [
       '经济学不是一门精确科学，但它仍然是一门科学',
       '市场可能在很长时间内保持非理性',
-      '政策制定者需要基于证据而非意识形态做决策'
+      '政策制定者需要基于证据而非意识形态做决策',
+      '贸易不是零和游戏，而是正和游戏',
+      '货币政策的有效性取决于经济环境'
     ],
     background: 'MIT教授，2008年诺贝尔经济学奖得主。以其对国际贸易和经济地理学的贡献而闻名，同时也是著名的经济政策评论家。'
   }

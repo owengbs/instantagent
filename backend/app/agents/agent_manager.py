@@ -13,6 +13,7 @@ from .base_agent import BaseAgent
 from .buffett_agent import BuffettAgent
 from .soros_agent import SorosAgent
 from .munger_agent import MungerAgent
+from .krugman_agent import KrugmanAgent
 from .topic_analyzer import topic_analyzer, AnalysisResult
 from .conversation_manager import (
     complexity_analyzer, 
@@ -66,6 +67,16 @@ class AgentManager:
             })
             logger.info("✅ 芒格智能体初始化成功")
             
+            # 创建克鲁格曼智能体
+            krugman_agent = KrugmanAgent()
+            self.register_agent('krugman', krugman_agent, {
+                'name': '保罗·克鲁格曼',
+                'description': '宏观经济分析专家',
+                'priority': 1,
+                'enabled': True
+            })
+            logger.info("✅ 克鲁格曼智能体初始化成功")
+            
         except Exception as e:
             logger.error(f"❌ 智能体初始化失败: {e}")
     
@@ -117,21 +128,28 @@ class AgentManager:
         """获取所有智能体信息"""
         return [agent.get_agent_info() for agent in self.agents.values()]
     
-    def determine_speaking_order(self, user_message: str, max_participants: int = 3) -> List[str]:
+    def determine_speaking_order(self, user_message: str, max_participants: int = 3, selected_mentors: List[str] = None) -> List[str]:
         """
         智能确定发言顺序
         
         Args:
             user_message: 用户消息
             max_participants: 最大参与者数量
+            selected_mentors: 前端选择的导师ID列表
             
         Returns:
             智能体ID列表，按发言顺序排列
         """
         try:
-            # 获取启用的智能体
-            enabled_agents = self.get_enabled_agents()
-            available_agent_ids = list(enabled_agents.keys())
+            # 如果指定了选中的导师，使用它们
+            if selected_mentors and len(selected_mentors) > 0:
+                available_agent_ids = [agent_id for agent_id in selected_mentors if agent_id in self.agents]
+                logger.info(f"🎯 使用前端选择的导师: {selected_mentors}, 可用智能体: {available_agent_ids}")
+            else:
+                # 获取启用的智能体
+                enabled_agents = self.get_enabled_agents()
+                available_agent_ids = list(enabled_agents.keys())
+                logger.info(f"🎯 使用默认启用的智能体: {available_agent_ids}")
             
             if not available_agent_ids:
                 logger.warning("❌ 没有可用的智能体")
@@ -160,29 +178,21 @@ class AgentManager:
                 first_speaker = random.choice(available_agent_ids)
                 logger.info(f"🎲 随机选择首发智能体: {first_speaker}")
             
-            # 构建发言顺序列表
+            # 构建发言顺序
             speaking_order = [first_speaker]
-            
-            # 添加其他参与者
             remaining_agents = [agent_id for agent_id in available_agent_ids if agent_id != first_speaker]
-            random.shuffle(remaining_agents)  # 随机打乱剩余智能体顺序
             
-            # 添加到发言顺序中，直到达到最大参与者数量
-            for agent_id in remaining_agents:
-                if len(speaking_order) >= max_participants:
-                    break
-                speaking_order.append(agent_id)
+            # 随机选择其他参与者
+            if remaining_agents:
+                # 随机打乱剩余智能体顺序
+                random.shuffle(remaining_agents)
+                speaking_order.extend(remaining_agents[:max_participants - 1])
             
-            logger.info(f"✅ 确定发言顺序: {speaking_order}")
+            logger.info(f"📋 最终发言顺序: {speaking_order}")
             return speaking_order
             
         except Exception as e:
             logger.error(f"❌ 确定发言顺序失败: {e}")
-            # 降级到简单随机选择
-            enabled_agents = list(self.get_enabled_agents().keys())
-            if enabled_agents:
-                random.shuffle(enabled_agents)
-                return enabled_agents[:max_participants]
             return []
     
     async def process_multi_agent_conversation(
@@ -190,7 +200,8 @@ class AgentManager:
         user_message: str, 
         session_id: str,
         user_id: str,
-        max_participants: int = 3  # 默认支持三人对话
+        max_participants: int = 3,  # 默认支持三人对话
+        selected_mentors: List[str] = None  # 前端选择的导师ID列表
     ) -> List[Dict[str, Any]]:
         """
         处理多智能体对话 - 支持动态发言顺序
@@ -200,12 +211,15 @@ class AgentManager:
             session_id: 会话ID
             user_id: 用户ID
             max_participants: 最大参与者数量
+            selected_mentors: 前端选择的导师ID列表
             
         Returns:
             智能体回复列表，按动态顺序排列
         """
         try:
             logger.info(f"🎤 开始智能多智能体对话: session_id={session_id}, user_message='{user_message[:50]}...'")
+            if selected_mentors:
+                logger.info(f"🎯 使用前端选择的导师: {selected_mentors}")
             
             # 1. 分析话题复杂度
             complexity = complexity_analyzer.analyze_complexity(user_message)
@@ -239,7 +253,7 @@ class AgentManager:
             suggested_participants = max_participants
             logger.info(f"🎯 三人圆桌对话 (复杂度: {complexity.complexity_level}, 得分: {complexity.complexity_score:.2f})")
             
-            speaking_order = self.determine_speaking_order(user_message, suggested_participants)
+            speaking_order = self.determine_speaking_order(user_message, suggested_participants, selected_mentors)
             
             if not speaking_order:
                 logger.error("❌ 无法确定发言顺序")
@@ -249,7 +263,7 @@ class AgentManager:
             
             # 按顺序生成智能体回复
             responses = []
-            previous_responses = []  # 存储之前的回复，用于后续智能体的上下文
+            previous_responses = []
             
             for order_index, agent_id in enumerate(speaking_order):
                 if agent_id not in self.agents:

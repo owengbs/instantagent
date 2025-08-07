@@ -33,6 +33,28 @@ class SorosAgent(BaseAgent):
             "敏锐洞察", "宏观思维", "时机把握", "风险控制", "全球视野"
         ]
         
+        # 索罗斯的专业领域
+        self.expertise = [
+            "宏观投资", "货币政策", "反身性理论", "市场时机", "全球趋势",
+            "风险管理", "对冲策略", "外汇交易", "政治经济学"
+        ]
+        
+        # 索罗斯的投资风格
+        self.investment_style = "宏观投资"
+        
+        # 索罗斯的经典名言
+        self.famous_quotes = [
+            "金融市场天生就不稳定",
+            "重要的不是你是否正确，而是你正确时赚了多少钱，错误时亏了多少钱",
+            "市场参与者的认知天生就是有缺陷的",
+            "我之所以富有，是因为我知道自己什么时候错了",
+            "市场可能在很长时间内保持非理性"
+        ]
+        
+        # 索罗斯的背景信息
+        self.title = "量子基金创始人"
+        self.background = "哲学出身的投资大师，以反身性理论闻名。1992年成功做空英镑，被称为击败英格兰银行的人。"
+        
         # 索罗斯的对话风格参数（犀利直接）
         self.conversation_styles = {
             "greeting_casual": {
@@ -229,4 +251,19 @@ class SorosAgent(BaseAgent):
         elif any(keyword in user_message.lower() for keyword in ['趋势', '方向']):
             return "趋势分析需要关注市场的反身性。投资者的认知会影响市场，而市场的变化又会反过来影响投资者的认知。"
         else:
-            return "时机把握是投资艺术的核心。我们需要在市场转折点进行大额投资，而不是在市场趋势明确时跟随。" 
+            return "时机把握是投资艺术的核心。我们需要在市场转折点进行大额投资，而不是在市场趋势明确时跟随。"
+    
+    def get_agent_info(self) -> Dict[str, Any]:
+        """获取智能体信息"""
+        return {
+            "agent_id": self.agent_id,
+            "name": self.name,
+            "title": self.title,
+            "description": self.description,
+            "voice": self.voice,
+            "expertise": self.expertise,
+            "personality_traits": self.personality_traits,
+            "investment_style": self.investment_style,
+            "famous_quotes": self.famous_quotes,
+            "background": self.background
+        } 

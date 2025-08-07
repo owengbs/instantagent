@@ -6,9 +6,13 @@ import { Mentor } from '../types/mentor'
 import { DEFAULT_MENTORS } from '../config/mentors'
 import MentorCard from './MentorCard'
 import CustomMentorForm from './CustomMentorForm'
+import { useMentors } from '../hooks/useMentors'
 
 const MentorSelection: React.FC = () => {
   const navigate = useNavigate()
+  const { getEnabledMentors, loading: mentorsLoading, error: mentorsError } = useMentors()
+  
+  // 优先使用后端数据，如果失败则使用默认数据
   const [availableMentors, setAvailableMentors] = useState<Mentor[]>(DEFAULT_MENTORS)
   const [selectedMentors, setSelectedMentors] = useState<Mentor[]>([])
   const [showCustomForm, setShowCustomForm] = useState(false)
@@ -27,6 +31,34 @@ const MentorSelection: React.FC = () => {
       }
     }
   }, [])
+
+  // 尝试从后端获取导师信息
+  useEffect(() => {
+    const fetchMentors = async () => {
+      try {
+        const enabledMentors = getEnabledMentors()
+        if (enabledMentors.length > 0) {
+          // 合并后端导师和自定义导师
+          const savedCustomMentors = localStorage.getItem('customMentors')
+          let customMentors: Mentor[] = []
+          if (savedCustomMentors) {
+            try {
+              customMentors = JSON.parse(savedCustomMentors)
+            } catch (error) {
+              console.error('加载自定义导师失败:', error)
+            }
+          }
+          setAvailableMentors([...enabledMentors, ...customMentors])
+        }
+      } catch (error) {
+        console.error('获取后端导师信息失败，使用默认数据:', error)
+      }
+    }
+
+    if (!mentorsLoading && !mentorsError) {
+      fetchMentors()
+    }
+  }, [getEnabledMentors, mentorsLoading, mentorsError])
 
   // 保存自定义导师到本地存储
   const saveCustomMentors = (mentors: Mentor[]) => {
@@ -76,6 +108,9 @@ const MentorSelection: React.FC = () => {
 
     // 保存选中的导师到本地存储或状态管理
     localStorage.setItem('selectedMentors', JSON.stringify(selectedMentors))
+    
+    // 调试信息
+    console.log('🎯 开始圆桌会议，选中的导师:', selectedMentors.map(m => ({ id: m.id, name: m.name })))
     
     // 导航到聊天页面
     navigate('/chat')

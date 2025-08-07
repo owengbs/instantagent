@@ -33,6 +33,28 @@ class BuffettAgent(BaseAgent):
             "稳健理性", "长期思维", "价值导向", "风险意识", "耐心等待"
         ]
         
+        # 巴菲特的专业领域
+        self.expertise = [
+            "价值投资", "长期持有", "企业分析", "护城河理论", "安全边际",
+            "能力圈投资", "理性投资", "风险管理", "资产配置"
+        ]
+        
+        # 巴菲特的投资风格
+        self.investment_style = "价值投资"
+        
+        # 巴菲特的经典名言
+        self.famous_quotes = [
+            "当别人恐惧时我贪婪，当别人贪婪时我恐惧",
+            "时间是优秀企业的朋友，是平庸企业的敌人",
+            "价格是你付出的，价值是你得到的",
+            "投资的第一条准则是不要赔钱，第二条准则是永远不要忘记第一条",
+            "如果你不愿意持有一只股票十年，那就不要持有十分钟"
+        ]
+        
+        # 巴菲特的背景信息
+        self.title = "伯克希尔·哈撒韦CEO"
+        self.background = "从小展现出商业天赋，建立了投资界最成功的记录之一。通过伯克希尔·哈撒韦公司管理超过7000亿美元资产。"
+        
         # 巴菲特的对话风格参数
         self.conversation_styles = {
             "greeting_casual": {
@@ -212,4 +234,19 @@ class BuffettAgent(BaseAgent):
         elif any(keyword in user_message.lower() for keyword in ['价值', '估值', '价格']):
             return "价值投资的核心是安全边际。以低于内在价值的价格买入，为不确定性留出缓冲。"
         else:
-            return default_responses[0] 
+            return default_responses[0]
+    
+    def get_agent_info(self) -> Dict[str, Any]:
+        """获取智能体信息"""
+        return {
+            "agent_id": self.agent_id,
+            "name": self.name,
+            "title": self.title,
+            "description": self.description,
+            "voice": self.voice,
+            "expertise": self.expertise,
+            "personality_traits": self.personality_traits,
+            "investment_style": self.investment_style,
+            "famous_quotes": self.famous_quotes,
+            "background": self.background
+        } 

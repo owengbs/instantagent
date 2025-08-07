@@ -15,6 +15,9 @@ export interface Mentor {
   famousQuotes: string[]
   isCustom?: boolean
   background?: string
+  voice?: string
+  enabled?: boolean
+  priority?: number
 }
 
 export interface MentorSelection {
