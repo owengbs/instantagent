@@ -100,7 +100,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
     if (!ctx) return
 
     // 获取音频数据
-    analyserRef.current.getByteFrequencyData(dataArrayRef.current as Uint8Array)
+    analyserRef.current.getByteFrequencyData(dataArrayRef.current as Uint8Array<ArrayBuffer>)
 
     // 清空画布
     ctx.clearRect(0, 0, width, height)

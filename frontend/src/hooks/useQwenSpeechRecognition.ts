@@ -166,7 +166,7 @@ class AudioRecorder {
             console.warn(`⚠️ 采样率不匹配: 期望${this.sampleRate}Hz, 实际${inputBuffer.sampleRate}Hz，进行重采样`)
             this.sampleRateWarningShown = true
           }
-          processedData = this.resampleAudio(inputData as Float32Array, inputBuffer.sampleRate, this.sampleRate)
+          processedData = this.resampleAudio(inputData as Float32Array<ArrayBuffer>, inputBuffer.sampleRate, this.sampleRate)
         }
         
         // 转换为Int16Array (PCM格式)
