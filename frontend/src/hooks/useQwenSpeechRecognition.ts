@@ -160,7 +160,7 @@ class AudioRecorder {
         }
         
         // 检查采样率并重采样
-        let processedData = inputData
+        let processedData: Float32Array<ArrayBuffer> = inputData as Float32Array<ArrayBuffer>
         if (inputBuffer.sampleRate !== this.sampleRate) {
           if (!this.sampleRateWarningShown) {
             console.warn(`⚠️ 采样率不匹配: 期望${this.sampleRate}Hz, 实际${inputBuffer.sampleRate}Hz，进行重采样`)
