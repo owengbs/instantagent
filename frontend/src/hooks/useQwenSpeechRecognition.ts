@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useChat } from '../contexts/ChatContext'
 import { useQwenTTS } from './useQwenTTS'
+import { API_CONFIG } from '../config/api'
+import { checkMediaSupport, getMediaErrorInfo } from '../utils/mediaUtils'
 
 interface QwenSpeechRecognitionOptions {
   language?: string
@@ -22,8 +24,6 @@ interface QwenSpeechRecognitionReturn {
   stopListening: () => void
   resetTranscript: () => void
 }
-
-import { API_CONFIG } from '../config/api'
 
 const API_BASE_URL = API_CONFIG.endpoints.asrWs()
 
@@ -129,6 +129,16 @@ class AudioRecorder {
 
   async start(): Promise<void> {
     try {
+      // 检查浏览器是否支持媒体设备API
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('浏览器不支持麦克风访问。请使用现代浏览器并确保在HTTPS环境下访问。')
+      }
+
+      // 检查是否在安全上下文中（HTTPS或localhost）
+      if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+        throw new Error('麦克风访问需要HTTPS环境。请使用HTTPS协议访问本站点。')
+      }
+
       // 获取麦克风权限，确保正确的音频参数
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -706,6 +716,18 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
     try {
       console.log('🎤 开始Qwen语音识别...')
       setError(null)
+      
+      // 首先检查媒体设备支持情况
+      const supportInfo = checkMediaSupport()
+      if (!supportInfo.isSupported) {
+        const errorMsg = supportInfo.errorMessage || '浏览器不支持语音功能'
+        console.error('❌ 媒体设备检查失败:', errorMsg)
+        console.log('💡 建议解决方案:', supportInfo.recommendations)
+        setError(errorMsg)
+        onError?.(errorMsg)
+        return
+      }
+
       onStart?.()
 
       // 连接WebSocket
@@ -725,9 +747,13 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
 
     } catch (err) {
       console.error('❌ 启动Qwen语音识别失败:', err)
-      const errorMessage = err instanceof Error ? err.message : String(err)
-      setError(errorMessage)
-      onError?.(errorMessage)
+      
+      // 获取用户友好的错误信息
+      const errorInfo = getMediaErrorInfo(err instanceof Error ? err : new Error(String(err)))
+      console.log('💡 解决方案:', errorInfo.solutions)
+      
+      setError(errorInfo.message)
+      onError?.(errorInfo.message)
     }
   }, [connectWebSocket, handleAudioData, onStart, onError, resetAutoStopTimer])
 

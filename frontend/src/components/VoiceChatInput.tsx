@@ -5,6 +5,7 @@ import { useQwenSpeechRecognition } from '../hooks/useQwenSpeechRecognition'
 import { useQwenTTS } from '../hooks/useQwenTTS'
 import { useChat } from '../contexts/ChatContext'
 import AudioVisualizer from './AudioVisualizer.tsx'
+import MediaErrorAlert from './MediaErrorAlert'
 import { ChatInputProps } from '../types'
 
 interface VoiceChatInputProps extends ChatInputProps {
@@ -375,20 +376,15 @@ const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
   return (
     <div className="space-y-4">
       {/* 错误提示 */}
-      <AnimatePresence>
-        {(recognitionError || synthesisError) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-red-50 border border-red-200 rounded-lg p-3"
-          >
-            <p className="text-red-700 text-sm">
-              ⚠️ {recognitionError || synthesisError}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <MediaErrorAlert 
+        error={recognitionError || synthesisError}
+        onRetry={() => {
+          if (recognitionError) {
+            resetTranscript()
+            setIsVoiceMode(true)
+          }
+        }}
+      />
 
       {/* 语音状态显示 */}
       <AnimatePresence>
