@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, MicOff, Volume2, VolumeX, Zap, Settings, Wifi, WifiOff } from 'lucide-react'
-import { useRealtimeChat } from '../hooks/useRealtimeChat'
+import { Mic, MicOff, Volume2, VolumeX, Zap } from 'lucide-react'
 import { useQwenSpeechRecognition } from '../hooks/useQwenSpeechRecognition'
+import { useRealtimeChat } from '../hooks/useRealtimeChat'
 
 interface RealtimeVoiceChatProps {
   disabled?: boolean
-  onToggle?: () => void
 }
 
 const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled }) => {
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
-  const [selectedVoice, setSelectedVoice] = useState('Cherry')
-  const [showSettings, setShowSettings] = useState(false)
+
 
   // 使用Qwen语音识别
   const {
@@ -46,10 +43,7 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled }) => {
   // 实时对话Hook
   const {
     isConnected,
-    isConnecting,
-    error,
     sendMessage,
-    setVoice,
     aiTextBuffer,
     isProcessing,
     isSpeaking
@@ -110,64 +104,10 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled }) => {
   }, [isListening, stopListening])
 
   return (
-    <div className="space-y-4">
-      {/* 连接状态 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          {isConnected ? (
-            <Wifi className="w-4 h-4 text-green-500" />
-          ) : (
-            <WifiOff className="w-4 h-4 text-red-500" />
-          )}
-          <span className={`text-sm ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-            {isConnecting ? '连接中...' : isConnected ? '已连接' : '未连接'}
-          </span>
-        </div>
-        
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* 设置面板 */}
-      <AnimatePresence>
-        {showSettings && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-gray-50 rounded-lg p-4 space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">语音设置</span>
-              <select
-                value={selectedVoice}
-                onChange={(e) => {
-                  setSelectedVoice(e.target.value)
-                  setVoice(e.target.value)
-                }}
-                className="text-sm border rounded px-2 py-1"
-              >
-                <option value="Cherry">Cherry (女声)</option>
-                <option value="ZhiYuan">ZhiYuan (男声)</option>
-              </select>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 错误显示 */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <p className="text-red-600 text-sm">❌ {error}</p>
-        </div>
-      )}
-
+    <div className="realtime-voice-chat">
+      
       {/* 语音识别状态 */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           {isListening ? (
             <Mic className="w-4 h-4 text-red-500 animate-pulse" />

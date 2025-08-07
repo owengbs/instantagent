@@ -52,7 +52,7 @@ class AudioRecorder {
   private lastAudioActivity = Date.now()
   private readonly activityThreshold = 0.01 // 音频能量阈值
   private readonly silenceTimeoutMs = 2000 // 2秒无活动后开始发送静音
-
+  
   // 音频重采样函数
   private resampleAudio(inputData: Float32Array, fromRate: number, toRate: number): Float32Array<ArrayBuffer> {
     if (fromRate === toRate) {
@@ -97,6 +97,8 @@ class AudioRecorder {
     energy = Math.sqrt(energy / audioData.length) // RMS能量
     return energy > this.activityThreshold
   }
+
+
   
   // 开始发送静音音频（保持连接）
   private startSilenceKeepAlive(): void {
@@ -168,6 +170,8 @@ class AudioRecorder {
         if (this.detectAudioActivity(inputData)) {
           this.lastAudioActivity = Date.now()
         }
+        
+
         
         // 检查采样率并重采样
         let processedData: Float32Array<ArrayBuffer> = inputData as Float32Array<ArrayBuffer>
