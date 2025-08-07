@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import MultiAgentChatContainer from './components/MultiAgentChatContainer.tsx'
 import Header from './components/Header.tsx'
-import Welcome from './components/Welcome.tsx'
+
 import LoadingScreen from './components/LoadingScreen.tsx'
 import VoiceTest from './components/VoiceTest.tsx'
 import VoiceChatInput from './components/VoiceChatInput.tsx'
+import MentorSelection from './components/MentorSelection.tsx'
 
 import { ChatProvider, useChat } from './contexts/ChatContext'
 
@@ -60,9 +62,30 @@ const ChatInterface: React.FC = () => {
   )
 }
 
+// 语音测试页面组件
+const VoiceTestPage: React.FC = () => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+      className="h-screen flex flex-col"
+    >
+      <Header 
+        onTestClick={() => window.history.back()}
+        onSettingsClick={() => console.log('设置')}
+        onInfoClick={() => console.log('关于')}
+      />
+      <div className="flex-1 overflow-auto bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+        <VoiceTest />
+      </div>
+    </motion.div>
+  )
+}
+
 function App() {
   const [isLoading, setIsLoading] = useState(true)
-  const [showWelcome, setShowWelcome] = useState(true)
 
   // 模拟初始加载
   useEffect(() => {
@@ -79,26 +102,18 @@ function App() {
   }
 
   return (
-    <ChatProvider>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <AnimatePresence mode="wait">
-          {showWelcome ? (
-            <motion.div
-              key="welcome"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="h-screen"
-            >
-              <Welcome onStart={() => setShowWelcome(false)} />
-            </motion.div>
-          ) : (
-            <ChatInterface />
-          )}
-        </AnimatePresence>
-      </div>
-    </ChatProvider>
+    <Router>
+      <ChatProvider>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+          <Routes>
+            <Route path="/" element={<MentorSelection />} />
+            <Route path="/chat" element={<ChatInterface />} />
+            <Route path="/test" element={<VoiceTestPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </ChatProvider>
+    </Router>
   )
 }
 
