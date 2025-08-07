@@ -8,13 +8,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      crypto: 'crypto-browserify',
-      stream: 'stream-browserify',
-      buffer: 'buffer',
     },
   },
   define: {
     global: 'globalThis',
+    // 直接定义crypto polyfill
+    'global.crypto': 'globalThis.crypto || { getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) { arr[i] = Math.floor(Math.random() * 256); } return arr; } }'
   },
   optimizeDeps: {
     esbuildOptions: {
@@ -40,10 +39,6 @@ export default defineConfig({
     },
     sourcemap: true,
     target: 'esnext',
-  },
-  // 添加Node.js polyfill
-  ssr: {
-    noExternal: ['vite']
   },
   // 添加环境变量
   envPrefix: 'VITE_'
