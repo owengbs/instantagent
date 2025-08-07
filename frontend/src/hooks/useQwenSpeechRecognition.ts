@@ -54,9 +54,9 @@ class AudioRecorder {
   private readonly silenceTimeoutMs = 2000 // 2秒无活动后开始发送静音
 
   // 音频重采样函数
-  private resampleAudio(inputData: Float32Array, fromRate: number, toRate: number): Float32Array {
+  private resampleAudio(inputData: Float32Array, fromRate: number, toRate: number): Float32Array<ArrayBuffer> {
     if (fromRate === toRate) {
-      return inputData
+      return inputData as Float32Array<ArrayBuffer>
     }
     
     const ratio = toRate / fromRate
