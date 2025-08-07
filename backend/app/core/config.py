@@ -9,9 +9,9 @@ from pydantic_settings import BaseSettings
 
 class QwenConfig(BaseModel):
     """Qwen/百炼配置"""
-    api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     api_key: str = "sk-ff980442223b45868202e5cb35724bb1"
-    model: str = "qwen-plus"
+    model_name: str = "qwen-plus"
     temperature: float = 0.7  # Qwen支持温度参数
     max_tokens: int = 2048  # 增加token限制以支持更长的回复
 
