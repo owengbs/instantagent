@@ -215,15 +215,18 @@ class KrugmanAgent(BaseAgent):
             
             full_prompt = base_prompt + "\n\n" + style_prompt
             
-            # 5. 调用LLM生成回复
-            response = await llm_client.generate_response(full_prompt)
-            
-            if not response or not response.strip():
+            # 5. 调用LLM生成回复（与其他智能体保持一致的流式方式）
+            full_response = ""
+            async for chunk in llm_client.chat_stream(message=full_prompt):
+                if chunk:
+                    full_response += chunk
+
+            if not full_response or not full_response.strip():
                 # 生成备用回复
-                response = self._generate_fallback_response(user_message, primary_domain)
-            
+                full_response = self._generate_fallback_response(user_message, primary_domain)
+
             # 6. 后处理回复
-            processed_response = self._post_process_response(response, context)
+            processed_response = self._post_process_response(full_response, context)
             
             logger.info(f"✅ 克鲁格曼回复生成完成: '{processed_response[:50]}...'")
             return processed_response
