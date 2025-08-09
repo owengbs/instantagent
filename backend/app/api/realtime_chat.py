@@ -266,10 +266,13 @@ class RealtimeChatManager:
             })
             
             # 调用智能体管理器处理多智能体对话，传递选中的导师信息
+            # 使用选中导师的数量作为最大参与者数量
+            max_participants = len(selected_mentors) if selected_mentors else 3
             agent_responses = await agent_manager.process_multi_agent_conversation(
                 user_message=user_message,
                 session_id=session_id,
                 user_id=client_id,
+                max_participants=max_participants,
                 selected_mentors=selected_mentors
             )
             

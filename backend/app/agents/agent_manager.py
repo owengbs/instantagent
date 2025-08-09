@@ -186,11 +186,18 @@ class AgentManager:
             speaking_order = [first_speaker]
             remaining_agents = [agent_id for agent_id in available_agent_ids if agent_id != first_speaker]
             
-            # 随机选择其他参与者
-            if remaining_agents:
-                # 随机打乱剩余智能体顺序
+            # 如果指定了选中导师，使用所有选中的导师
+            if selected_mentors and len(selected_mentors) > 0:
+                # 对于指定的导师列表，使用所有可用的导师（不受max_participants限制）
                 random.shuffle(remaining_agents)
-                speaking_order.extend(remaining_agents[:max_participants - 1])
+                speaking_order.extend(remaining_agents)
+                logger.info(f"🎯 使用用户选择的所有导师: {len(speaking_order)}位")
+            else:
+                # 没有指定导师时，按max_participants限制选择
+                if remaining_agents:
+                    random.shuffle(remaining_agents)
+                    speaking_order.extend(remaining_agents[:max_participants - 1])
+                logger.info(f"🎲 默认模式，最多{max_participants}位导师")
             
             logger.info(f"📋 最终发言顺序: {speaking_order}")
             return speaking_order
@@ -253,9 +260,9 @@ class AgentManager:
             })
             
             # 3. 智能确定发言顺序和参与者数量
-            # 始终使用3人对话，提供最丰富的投资观点交流
             suggested_participants = max_participants
-            logger.info(f"🎯 三人圆桌对话 (复杂度: {complexity.complexity_level}, 得分: {complexity.complexity_score:.2f})")
+            participant_text = "三人" if max_participants == 3 else f"{max_participants}人"
+            logger.info(f"🎯 {participant_text}圆桌对话 (复杂度: {complexity.complexity_level}, 得分: {complexity.complexity_score:.2f})")
             
             speaking_order = self.determine_speaking_order(user_message, suggested_participants, selected_mentors)
             

@@ -18,6 +18,7 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
   const [topic, setTopic] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedMentors, setGeneratedMentors] = useState<Mentor[]>([])
+  const [selectedMentorIds, setSelectedMentorIds] = useState<string[]>([])
   const [sessionId, setSessionId] = useState('')
   const [error, setError] = useState('')
 
@@ -74,6 +75,8 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
           }))
           
           setGeneratedMentors(mentors)
+          // 默认全选所有生成的导师
+          setSelectedMentorIds(mentors.map(m => m.id))
           setIsGenerating(false)
           ws.close()
         } else if (data.type === 'error') {
@@ -96,13 +99,25 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
     }
   }
 
+  // 切换导师选择状态
+  const toggleMentorSelection = (mentorId: string) => {
+    setSelectedMentorIds(prev => {
+      if (prev.includes(mentorId)) {
+        return prev.filter(id => id !== mentorId)
+      } else {
+        return [...prev, mentorId]
+      }
+    })
+  }
+
   // 开始对话
   const handleStartConversation = () => {
-    if (generatedMentors.length > 0) {
-      onMentorsGenerated(generatedMentors, topic, sessionId)
+    if (selectedMentorIds.length > 0) {
+      const selectedMentors = generatedMentors.filter(mentor => selectedMentorIds.includes(mentor.id))
+      onMentorsGenerated(selectedMentors, topic, sessionId)
       navigate('/chat', { 
         state: { 
-          mentors: generatedMentors,
+          mentors: selectedMentors,
           topic: topic,
           sessionId: sessionId,
           isDynamic: true
@@ -216,11 +231,11 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.1 }}
                     >
-                                              <MentorCard
-                          mentor={mentor}
-                          isSelected={true}
-                          onToggleSelect={() => {}} // 动态导师默认全选
-                        />
+                      <MentorCard
+                        mentor={mentor}
+                        isSelected={selectedMentorIds.includes(mentor.id)}
+                        onToggleSelect={() => toggleMentorSelection(mentor.id)}
+                      />
                     </motion.div>
                   ))}
                 </div>
@@ -234,10 +249,11 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
                 >
                   <button
                     onClick={handleStartConversation}
-                    className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:from-green-700 hover:to-blue-700 transition-all duration-200 flex items-center justify-center space-x-2"
+                    disabled={selectedMentorIds.length === 0}
+                    className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:from-green-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center space-x-2"
                   >
                     <Users className="w-5 h-5" />
-                    <span>开始与导师对话</span>
+                    <span>开始与导师对话 {selectedMentorIds.length > 0 && `(${selectedMentorIds.length}位)`}</span>
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </motion.div>
