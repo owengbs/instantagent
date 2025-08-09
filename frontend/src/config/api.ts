@@ -62,13 +62,13 @@ export const API_CONFIG = {
   // 具体的API端点
   endpoints: {
     // 聊天WebSocket
-    chatWs: (sessionId: string) => `${API_CONFIG.getWsBaseUrl()}/api/realtime/ws/${sessionId}`,
+    chatWs: (sessionId: string) => `${API_CONFIG.getWsBaseUrl()}/realtime/ws/${sessionId}`,
     
     // 语音识别WebSocket  
     asrWs: () => `${API_CONFIG.getWsBaseUrl()}/api/asr/ws`,
     
     // 实时对话WebSocket
-    realtimeWs: () => `${API_CONFIG.getWsBaseUrl()}/api/realtime/ws`,
+    realtimeWs: () => `${API_CONFIG.getWsBaseUrl()}/realtime/ws`,
     
     // TTS API
     tts: () => `${API_CONFIG.getHttpBaseUrl()}/api/tts`,

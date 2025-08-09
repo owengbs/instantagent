@@ -19,6 +19,7 @@ from ..services.qwen_tts_realtime import qwen_tts_realtime
 from ..services.qwen_asr_realtime import qwen_asr_realtime
 from ..services.text_cleaner import text_cleaner
 from ..core.config import settings
+from .mentors import get_mentor_avatar, get_mentor_color
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -240,7 +241,18 @@ class RealtimeChatManager:
             
             # 获取前端选择的导师信息
             selected_mentors = session.get("selected_mentors", [])
-            if selected_mentors:
+            
+            # 检查是否有动态导师
+            dynamic_mentors = session.get("dynamic_mentors", [])
+            if dynamic_mentors:
+                # 如果有动态导师，优先使用动态导师
+                available_mentors = [mid for mid in dynamic_mentors if mid in agent_manager.agents]
+                if available_mentors:
+                    selected_mentors = available_mentors
+                    logger.info(f"🎯 使用动态导师: {selected_mentors}")
+                else:
+                    logger.info("🎯 动态导师不可用，使用默认智能体")
+            elif selected_mentors:
                 logger.info(f"🎯 使用前端选择的导师: {selected_mentors}")
             else:
                 logger.info("🎯 未找到前端选择的导师，使用默认智能体")
@@ -535,7 +547,12 @@ async def realtime_websocket_endpoint(websocket: WebSocket, client_id: str):
         realtime_manager.disconnect(client_id)
         logger.info(f"🔌 实时对话正常断开: client_id={client_id}")
     except Exception as e:
-        logger.error(f"❌ 实时对话意外错误: client_id={client_id}, error={e}")
+        # 检查是否是正常的断开连接错误
+        error_msg = str(e)
+        if "Cannot call" in error_msg and "disconnect" in error_msg:
+            logger.debug(f"客户端已断开连接: {client_id}")
+        else:
+            logger.error(f"❌ 实时对话意外错误: client_id={client_id}, error={e}")
         realtime_manager.disconnect(client_id)
 
 async def handle_realtime_message(client_id: str, message: dict):
@@ -566,6 +583,116 @@ async def handle_realtime_message(client_id: str, message: dict):
                 "type": "mentors_set",
                 "mentors": selected_mentors,
                 "timestamp": datetime.now().isoformat()
+            })
+    
+    elif message_type == "generate_dynamic_mentors":
+        # 生成动态导师
+        topic = message.get("topic", "")
+        session_id = message.get("session_id", f"dynamic_{client_id}")
+        
+        if not topic:
+            await realtime_manager.send_message(client_id, {
+                "type": "error",
+                "message": "议题不能为空"
+            })
+            return
+        
+        try:
+            logger.info(f"🎯 收到动态导师生成请求: topic='{topic}', session_id='{session_id}'")
+            
+            # 生成动态导师
+            mentors = await agent_manager.generate_dynamic_mentors(topic, session_id)
+            
+            # 为前端补充头像与颜色信息
+            enriched_mentors = []
+            for m in mentors:
+                agent_id = m.get("agent_id")
+                enriched = {
+                    **m,
+                    "avatar": get_mentor_avatar(agent_id),
+                    "color": get_mentor_color(agent_id),
+                }
+                enriched_mentors.append(enriched)
+            
+            # 保存会话信息
+            if client_id in realtime_manager.user_sessions:
+                realtime_manager.user_sessions[client_id]["session_id"] = session_id
+                realtime_manager.user_sessions[client_id]["topic"] = topic
+                realtime_manager.user_sessions[client_id]["dynamic_mentors"] = [m["agent_id"] for m in enriched_mentors]
+            
+            # 发送生成的导师信息
+            await realtime_manager.send_message(client_id, {
+                "type": "dynamic_mentors_generated",
+                "mentors": enriched_mentors,
+                "topic": topic,
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            logger.info(f"✅ 动态导师生成成功: {len(mentors)} 位导师")
+            
+        except Exception as e:
+            logger.error(f"❌ 生成动态导师失败: {e}")
+            await realtime_manager.send_message(client_id, {
+                "type": "error",
+                "message": f"生成动态导师失败: {str(e)}"
+            })
+    
+    elif message_type == "get_session_mentors":
+        # 获取会话的动态导师
+        session_id = message.get("session_id", "")
+        if not session_id:
+            await realtime_manager.send_message(client_id, {
+                "type": "error",
+                "message": "会话ID不能为空"
+            })
+            return
+        
+        try:
+            mentors = agent_manager.get_session_dynamic_mentors(session_id)
+            topic = agent_manager.get_session_topic(session_id)
+            
+            await realtime_manager.send_message(client_id, {
+                "type": "session_mentors",
+                "mentors": mentors,
+                "topic": topic,
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ 获取会话导师失败: {e}")
+            await realtime_manager.send_message(client_id, {
+                "type": "error",
+                "message": f"获取会话导师失败: {str(e)}"
+            })
+    
+    elif message_type == "cleanup_session_mentors":
+        # 清理会话的动态导师
+        session_id = message.get("session_id", "")
+        if not session_id:
+            await realtime_manager.send_message(client_id, {
+                "type": "error",
+                "message": "会话ID不能为空"
+            })
+            return
+        
+        try:
+            agent_manager.cleanup_dynamic_mentors(session_id)
+            
+            await realtime_manager.send_message(client_id, {
+                "type": "session_mentors_cleaned",
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            logger.info(f"✅ 会话导师清理成功: {session_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ 清理会话导师失败: {e}")
+            await realtime_manager.send_message(client_id, {
+                "type": "error",
+                "message": f"清理会话导师失败: {str(e)}"
             })
     
     elif message_type == "asr_start":

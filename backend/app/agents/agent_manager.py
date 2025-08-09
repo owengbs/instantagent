@@ -14,6 +14,8 @@ from .buffett_agent import BuffettAgent
 from .soros_agent import SorosAgent
 from .munger_agent import MungerAgent
 from .krugman_agent import KrugmanAgent
+from .dynamic_mentor import DynamicMentor
+from .dynamic_mentor_generator import dynamic_mentor_generator
 from .topic_analyzer import topic_analyzer, AnalysisResult
 from .conversation_manager import (
     complexity_analyzer, 
@@ -30,6 +32,8 @@ class AgentManager:
         self.agents: Dict[str, BaseAgent] = {}
         self.conversation_sessions: Dict[str, Dict[str, Any]] = {}
         self.agent_configs: Dict[str, Dict[str, Any]] = {}  # 智能体配置信息
+        self.dynamic_mentors: Dict[str, List[str]] = {}  # 会话ID -> 动态导师ID列表
+        self.session_topics: Dict[str, str] = {}  # 会话ID -> 议题
         
         # 初始化智能体
         self._initialize_agents()
@@ -467,6 +471,107 @@ class AgentManager:
             # 同时清空智能体的历史
             for agent in self.agents.values():
                 agent.clear_history()
+    
+    async def generate_dynamic_mentors(self, topic: str, session_id: str) -> List[Dict[str, Any]]:
+        """
+        为指定议题生成动态导师
+        
+        Args:
+            topic: 讨论议题
+            session_id: 会话ID
+            
+        Returns:
+            生成的导师信息列表
+        """
+        try:
+            logger.info(f"🎯 开始为议题生成动态导师: '{topic}' (会话: {session_id})")
+            
+            # 调用动态导师生成器
+            mentor_data_list = await dynamic_mentor_generator.generate_mentors_for_topic(topic)
+            
+            # 创建动态导师实例
+            dynamic_mentor_ids = []
+            for mentor_data in mentor_data_list:
+                # 创建动态导师实例
+                dynamic_mentor = DynamicMentor(mentor_data)
+                agent_id = dynamic_mentor.agent_id
+                
+                # 注册导师
+                self.register_agent(agent_id, dynamic_mentor, {
+                    'name': dynamic_mentor.name,
+                    'description': dynamic_mentor.description,
+                    'priority': 2,  # 动态导师优先级较低
+                    'enabled': True,
+                    'voice': dynamic_mentor.voice,
+                    'is_dynamic': True,  # 标记为动态导师
+                    'topic': topic,
+                    'session_id': session_id
+                })
+                
+                dynamic_mentor_ids.append(agent_id)
+                logger.info(f"✅ 动态导师注册成功: {dynamic_mentor.name} ({agent_id})")
+            
+            # 保存会话相关信息
+            self.dynamic_mentors[session_id] = dynamic_mentor_ids
+            self.session_topics[session_id] = topic
+            
+            logger.info(f"✅ 成功生成 {len(dynamic_mentor_ids)} 位动态导师")
+            return [mentor.get_agent_info() for mentor in [self.agents[agent_id] for agent_id in dynamic_mentor_ids]]
+            
+        except Exception as e:
+            logger.error(f"❌ 生成动态导师失败: {e}")
+            return []
+    
+    def get_session_dynamic_mentors(self, session_id: str) -> List[Dict[str, Any]]:
+        """
+        获取会话的动态导师信息
+        
+        Args:
+            session_id: 会话ID
+            
+        Returns:
+            动态导师信息列表
+        """
+        if session_id not in self.dynamic_mentors:
+            return []
+        
+        mentor_infos = []
+        for agent_id in self.dynamic_mentors[session_id]:
+            if agent_id in self.agents:
+                mentor_infos.append(self.agents[agent_id].get_agent_info())
+        
+        return mentor_infos
+    
+    def get_session_topic(self, session_id: str) -> Optional[str]:
+        """获取会话议题"""
+        return self.session_topics.get(session_id)
+    
+    def cleanup_dynamic_mentors(self, session_id: str):
+        """
+        清理会话的动态导师
+        
+        Args:
+            session_id: 会话ID
+        """
+        if session_id in self.dynamic_mentors:
+            # 注销动态导师
+            for agent_id in self.dynamic_mentors[session_id]:
+                if agent_id in self.agents:
+                    del self.agents[agent_id]
+                if agent_id in self.agent_configs:
+                    del self.agent_configs[agent_id]
+            
+            # 清理会话数据
+            del self.dynamic_mentors[session_id]
+            if session_id in self.session_topics:
+                del self.session_topics[session_id]
+            
+            logger.info(f"🗑️ 清理会话 {session_id} 的动态导师")
+    
+    def is_dynamic_mentor(self, agent_id: str) -> bool:
+        """判断是否为动态导师"""
+        config = self.agent_configs.get(agent_id, {})
+        return config.get('is_dynamic', False)
 
 # 创建全局智能体管理器实例
 agent_manager = AgentManager() 

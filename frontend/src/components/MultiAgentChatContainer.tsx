@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import MessageBubble from './MessageBubble';
 import AgentAvatar from './AgentAvatar';
 import { useChat } from '../contexts/ChatContext';
@@ -13,6 +13,7 @@ interface MultiAgentChatContainerProps {
 
 const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ className = '' }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state } = useChat();
   const { messages, isTyping } = state;
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -27,46 +28,85 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
     }
   });
 
-  // 从本地存储加载选中的导师
+  // 从路由状态或本地存储加载选中的导师
   useEffect(() => {
-    const savedMentors = localStorage.getItem('selectedMentors');
-    if (savedMentors) {
-      try {
-        const mentors: Mentor[] = JSON.parse(savedMentors);
-        setSelectedMentors(mentors);
-        
-        // 转换导师数据为agentInfo格式
-        const newAgentInfo: Record<string, any> = {
-          user: {
-            id: 'user',
-            name: '您',
-            description: '投资者',
-            avatar: '/avatars/user.png',
-            color: '#F59E0B'
-          }
+    // 检查是否有动态导师信息
+    const routeState = location.state as any;
+    if (routeState?.mentors && routeState?.isDynamic) {
+      // 使用动态导师
+      const mentors: Mentor[] = routeState.mentors;
+      setSelectedMentors(mentors);
+      
+      // 转换导师数据为agentInfo格式
+      const newAgentInfo: Record<string, any> = {
+        user: {
+          id: 'user',
+          name: '您',
+          description: '投资者',
+          avatar: '/avatars/user.png',
+          color: '#F59E0B'
+        }
+      };
+      
+      mentors.forEach(mentor => {
+        newAgentInfo[mentor.id] = {
+          id: mentor.id,
+          name: mentor.name,
+          description: mentor.title,
+          avatar: mentor.avatar,
+          color: mentor.color
         };
-        
-        mentors.forEach(mentor => {
-          newAgentInfo[mentor.id] = {
-            id: mentor.id,
-            name: mentor.name,
-            description: mentor.title,
-            avatar: mentor.avatar,
-            color: mentor.color
+      });
+      
+      setAgentInfo(newAgentInfo);
+      
+      // 保存动态导师信息到本地存储
+      localStorage.setItem('selectedMentors', JSON.stringify(mentors));
+      localStorage.setItem('dynamicSessionId', routeState.sessionId || '');
+      localStorage.setItem('dynamicTopic', routeState.topic || '');
+      
+      console.log('使用动态导师:', mentors.length, '位导师');
+    } else {
+      // 从本地存储加载选中的导师
+      const savedMentors = localStorage.getItem('selectedMentors');
+      if (savedMentors) {
+        try {
+          const mentors: Mentor[] = JSON.parse(savedMentors);
+          setSelectedMentors(mentors);
+          
+          // 转换导师数据为agentInfo格式
+          const newAgentInfo: Record<string, any> = {
+            user: {
+              id: 'user',
+              name: '您',
+              description: '投资者',
+              avatar: '/avatars/user.png',
+              color: '#F59E0B'
+            }
           };
-        });
-        
-        setAgentInfo(newAgentInfo);
-      } catch (error) {
-        console.error('加载选中导师失败:', error);
+          
+          mentors.forEach(mentor => {
+            newAgentInfo[mentor.id] = {
+              id: mentor.id,
+              name: mentor.name,
+              description: mentor.title,
+              avatar: mentor.avatar,
+              color: mentor.color
+            };
+          });
+          
+          setAgentInfo(newAgentInfo);
+        } catch (error) {
+          console.error('加载选中导师失败:', error);
+          // 如果没有选中导师，重定向到选择页面
+          navigate('/');
+        }
+      } else {
         // 如果没有选中导师，重定向到选择页面
         navigate('/');
       }
-    } else {
-      // 如果没有选中导师，重定向到选择页面
-      navigate('/');
     }
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   // 自动滚动到底部
   useEffect(() => {

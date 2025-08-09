@@ -53,6 +53,18 @@ class MentorUpdateRequest(BaseModel):
     enabled: Optional[bool] = None
     voice: Optional[str] = None
 
+class DynamicMentorRequest(BaseModel):
+    """动态导师生成请求模型"""
+    topic: str
+    session_id: str
+
+class DynamicMentorResponse(BaseModel):
+    """动态导师生成响应模型"""
+    mentors: List[MentorInfo]
+    topic: str
+    session_id: str
+    generated_at: str
+
 # 导师颜色映射
 MENTOR_COLORS = {
     'buffett': '#3B82F6',      # 蓝色 - 价值投资
@@ -68,6 +80,24 @@ MENTOR_AVATARS = {
     'munger': 'https://api.dicebear.com/7.x/big-ears/svg?seed=charlie-munger',
     'krugman': 'https://api.dicebear.com/7.x/croodles/svg?seed=paul-krugman',
 }
+
+def get_mentor_color(agent_id: str) -> str:
+    """获取导师颜色"""
+    if agent_id in MENTOR_COLORS:
+        return MENTOR_COLORS[agent_id]
+    # 为动态导师生成颜色
+    colors = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#8B5A2B']
+    color_index = hash(agent_id) % len(colors)
+    return colors[color_index]
+
+def get_mentor_avatar(agent_id: str) -> str:
+    """获取导师头像"""
+    if agent_id in MENTOR_AVATARS:
+        return MENTOR_AVATARS[agent_id]
+    # 为动态导师生成头像
+    avatar_styles = ['adventurer', 'avataaars', 'big-ears', 'croodles', 'fun-emoji', 'lorelei']
+    style_index = hash(agent_id) % len(avatar_styles)
+    return f'https://api.dicebear.com/7.x/{avatar_styles[style_index]}/svg?seed={agent_id}'
 
 @router.get("/", response_model=List[MentorInfo])
 async def get_all_mentors():
@@ -95,8 +125,8 @@ async def get_all_mentors():
                 personality_traits=agent_info.get('personality_traits', []),
                 investment_style=agent_info.get('investment_style', ''),
                 famous_quotes=agent_info.get('famous_quotes', []),
-                color=MENTOR_COLORS.get(agent_id, '#6B7280'),
-                avatar=MENTOR_AVATARS.get(agent_id, f'https://api.dicebear.com/7.x/adventurer/svg?seed={agent_id}'),
+                color=get_mentor_color(agent_id),
+                avatar=get_mentor_avatar(agent_id),
                 enabled=agent_config.get('enabled', True),
                 priority=agent_config.get('priority', 1),
                 registered_at=agent_config.get('registered_at', datetime.now().isoformat())
@@ -475,3 +505,101 @@ async def get_personality_templates():
     except Exception as e:
         logger.error(f"❌ 获取性格特征模板失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取性格特征模板失败: {str(e)}")
+
+@router.post("/dynamic/generate", response_model=DynamicMentorResponse)
+async def generate_dynamic_mentors(request: DynamicMentorRequest):
+    """
+    根据议题生成动态导师
+    
+    Args:
+        request: 动态导师生成请求
+        
+    Returns:
+        生成的导师信息
+    """
+    try:
+        logger.info(f"🎯 收到动态导师生成请求: 议题='{request.topic}', 会话='{request.session_id}'")
+        
+        # 生成动态导师
+        mentors = await agent_manager.generate_dynamic_mentors(request.topic, request.session_id)
+        
+        # 转换为MentorInfo格式
+        mentor_infos = []
+        for mentor in mentors:
+            mentor_info = MentorInfo(
+                agent_id=mentor['agent_id'],
+                name=mentor['name'],
+                title=mentor.get('title', ''),
+                description=mentor.get('description', ''),
+                voice=mentor.get('voice', 'Cherry'),
+                expertise=mentor.get('expertise', []),
+                personality_traits=mentor.get('personality_traits', []),
+                investment_style=mentor.get('investment_style', ''),
+                famous_quotes=mentor.get('famous_quotes', []),
+                color=get_mentor_color(mentor['agent_id']),
+                avatar=get_mentor_avatar(mentor['agent_id']),
+                enabled=True,
+                priority=2,
+                registered_at=mentor.get('created_at', datetime.now().isoformat())
+            )
+            mentor_infos.append(mentor_info)
+        
+        response = DynamicMentorResponse(
+            mentors=mentor_infos,
+            topic=request.topic,
+            session_id=request.session_id,
+            generated_at=datetime.now().isoformat()
+        )
+        
+        logger.info(f"✅ 成功生成 {len(mentor_infos)} 位动态导师")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ 生成动态导师失败: {e}")
+        raise HTTPException(status_code=500, detail=f"生成动态导师失败: {str(e)}")
+
+@router.get("/dynamic/{session_id}")
+async def get_session_dynamic_mentors(session_id: str):
+    """
+    获取会话的动态导师
+    
+    Args:
+        session_id: 会话ID
+        
+    Returns:
+        动态导师信息列表
+    """
+    try:
+        logger.info(f"📋 获取会话 {session_id} 的动态导师")
+        
+        mentors = agent_manager.get_session_dynamic_mentors(session_id)
+        topic = agent_manager.get_session_topic(session_id)
+        
+        return {
+            "mentors": mentors,
+            "topic": topic,
+            "session_id": session_id
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ 获取会话动态导师失败: {e}")
+        raise HTTPException(status_code=500, detail="获取会话动态导师失败")
+
+@router.delete("/dynamic/{session_id}")
+async def cleanup_session_mentors(session_id: str):
+    """
+    清理会话的动态导师
+    
+    Args:
+        session_id: 会话ID
+    """
+    try:
+        logger.info(f"🗑️ 清理会话 {session_id} 的动态导师")
+        
+        agent_manager.cleanup_dynamic_mentors(session_id)
+        
+        return {"message": "动态导师清理成功"}
+        
+    except Exception as e:
+        logger.error(f"❌ 清理动态导师失败: {e}")
+        raise HTTPException(status_code=500, detail="清理动态导师失败")

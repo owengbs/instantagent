@@ -103,7 +103,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const wsUrl = API_CONFIG.endpoints.chatWs(state.sessionId)
+      // 检查是否有动态导师会话ID
+      const dynamicSessionId = localStorage.getItem('dynamicSessionId')
+      const sessionId = dynamicSessionId || state.sessionId
+      const wsUrl = API_CONFIG.endpoints.chatWs(sessionId)
 
       wsRef.current = new WebSocket(wsUrl)
 
@@ -114,6 +117,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // 发送选中的导师信息到后端
         const selectedMentors = localStorage.getItem('selectedMentors')
+        const dynamicSessionId = localStorage.getItem('dynamicSessionId')
+        
         if (selectedMentors) {
           try {
             const mentors = JSON.parse(selectedMentors)
@@ -121,10 +126,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('🎯 发送选中的导师信息到后端:', mentorIds)
             console.log('📋 导师详细信息:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
             
-            wsRef.current?.send(JSON.stringify({
-              type: 'set_selected_mentors',
-              mentors: mentorIds
-            }))
+            // 检查是否为动态导师
+            const isDynamic = mentors.some((m: any) => m.isDynamic)
+            if (isDynamic && dynamicSessionId) {
+              console.log('🎯 使用动态导师会话:', dynamicSessionId)
+              // 对于动态导师，不需要发送导师ID，后端会根据会话ID获取
+            } else {
+              wsRef.current?.send(JSON.stringify({
+                type: 'set_selected_mentors',
+                mentors: mentorIds
+              }))
+            }
           } catch (error) {
             console.error('❌ 解析选中的导师信息失败:', error)
           }

@@ -67,6 +67,9 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(tts_router, prefix="/api")
+# 直接按模块内定义前缀挂载（模块内已是 /realtime）
+app.include_router(realtime_router)
+# 同时兼容历史路径 /api/realtime
 app.include_router(realtime_router, prefix="/api")
 app.include_router(asr_ws_router, prefix="/api")
 app.include_router(mentors_router, prefix="/api")

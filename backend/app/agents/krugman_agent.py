@@ -21,11 +21,11 @@ class KrugmanAgent(BaseAgent):
             agent_id="krugman",
             name="保罗·克鲁格曼",
             description="宏观经济分析专家，诺贝尔经济学奖得主",
-            voice="Ethan"
+            voice="Serena"
         )
         self.name = "保罗·克鲁格曼"
         self.title = "诺贝尔经济学奖得主"
-        self.voice = "Ethan"  # 使用Ethan声音，适合学术严谨的风格
+        self.voice = "Serena"  # 使用Ethan声音，适合学术严谨的风格
         self.expertise = [
             "宏观经济学", "国际贸易", "货币政策", "经济周期",
             "新贸易理论", "新经济地理学", "经济政策分析", "金融危机"

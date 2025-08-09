@@ -82,6 +82,36 @@ class SimpleLLMClient:
                 "status": "unhealthy", 
                 "error": str(e)
             }
+    
+    async def generate_response(self, system_prompt: str, user_message: str, temperature: float = 0.7, max_tokens: int = 500) -> str:
+        """
+        生成回复
+        
+        Args:
+            system_prompt: 系统提示词
+            user_message: 用户消息
+            temperature: 温度参数
+            max_tokens: 最大token数
+            
+        Returns:
+            str: 生成的回复
+        """
+        try:
+            if not self.llm:
+                await self.initialize()
+            
+            # 构建完整消息
+            full_message = f"{system_prompt}\n\n用户问题：{user_message}"
+            messages = [HumanMessage(content=full_message)]
+            
+            # 调用LLM
+            response = await self.llm.ainvoke(messages)
+            
+            return response.content if response.content else "抱歉，我现在无法回复。"
+            
+        except Exception as e:
+            logger.error(f"❌ LLM生成回复失败: {e}")
+            return "抱歉，我现在无法回复。请稍后再试。"
 
 
 # 全局LLM客户端实例

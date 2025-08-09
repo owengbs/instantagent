@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, ArrowRight, Users, Sparkles, Filter, Search } from 'lucide-react'
+import { Plus, ArrowRight, Users, Sparkles, Filter, Search, Zap } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Mentor } from '../types/mentor'
 import { DEFAULT_MENTORS } from '../config/mentors'
 import MentorCard from './MentorCard'
 import CustomMentorForm from './CustomMentorForm'
+import DynamicMentorGenerator from './DynamicMentorGenerator'
 import { useMentors } from '../hooks/useMentors'
 
 const MentorSelection: React.FC = () => {
@@ -16,6 +17,7 @@ const MentorSelection: React.FC = () => {
   const [availableMentors, setAvailableMentors] = useState<Mentor[]>(DEFAULT_MENTORS)
   const [selectedMentors, setSelectedMentors] = useState<Mentor[]>([])
   const [showCustomForm, setShowCustomForm] = useState(false)
+  const [showDynamicGenerator, setShowDynamicGenerator] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStyle, setFilterStyle] = useState<string>('')
 
@@ -97,6 +99,12 @@ const MentorSelection: React.FC = () => {
       })
       setSelectedMentors(prev => prev.filter(m => m.id !== mentor.id))
     }
+  }
+
+  // 处理动态导师生成
+  const handleDynamicMentorsGenerated = (mentors: Mentor[], topic: string, sessionId: string) => {
+    // 动态导师会直接跳转到聊天页面，这里不需要额外处理
+    console.log('动态导师已生成:', mentors.length, '位导师')
   }
 
   // 开始圆桌会议
@@ -210,6 +218,17 @@ const MentorSelection: React.FC = () => {
             <Sparkles className="w-5 h-5" />
             <span className="font-medium">创建导师</span>
           </motion.button>
+
+          {/* 动态导师生成按钮 */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowDynamicGenerator(true)}
+            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl hover:from-green-600 hover:to-blue-600 transition-all duration-300 shadow-lg"
+          >
+            <Zap className="w-5 h-5" />
+            <span className="font-medium">AI生成导师</span>
+          </motion.button>
         </motion.div>
 
         {/* 导师网格 */}
@@ -302,6 +321,16 @@ const MentorSelection: React.FC = () => {
           onSubmit={handleAddCustomMentor}
           existingMentors={availableMentors}
         />
+
+        {/* 动态导师生成器 */}
+        <AnimatePresence>
+          {showDynamicGenerator && (
+            <DynamicMentorGenerator
+              onMentorsGenerated={handleDynamicMentorsGenerated}
+              onClose={() => setShowDynamicGenerator(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
