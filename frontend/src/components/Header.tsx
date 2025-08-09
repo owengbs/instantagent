@@ -29,7 +29,7 @@ const Header: React.FC<HeaderProps> = ({
             <MessageSquare className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">智能交易客服</h1>
+            <h1 className="text-xl font-bold text-gray-800">投资大师圆桌会议</h1>
             <p className="text-sm text-gray-500">专业的股票交易助手</p>
           </div>
         </div>

@@ -18,6 +18,7 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
   const { messages, isTyping } = state;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedMentors, setSelectedMentors] = useState<Mentor[]>([]);
+  const [isValidAccess, setIsValidAccess] = useState(false);
   const [agentInfo, setAgentInfo] = useState<Record<string, any>>({
     user: {
       id: 'user',
@@ -66,44 +67,56 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
       localStorage.setItem('dynamicTopic', routeState.topic || '');
       
       console.log('使用动态导师:', mentors.length, '位导师');
+      setIsValidAccess(true);
     } else {
       // 从本地存储加载选中的导师
       const savedMentors = localStorage.getItem('selectedMentors');
       if (savedMentors) {
         try {
           const mentors: Mentor[] = JSON.parse(savedMentors);
-          setSelectedMentors(mentors);
-          
-          // 转换导师数据为agentInfo格式
-          const newAgentInfo: Record<string, any> = {
-            user: {
-              id: 'user',
-              name: '您',
-              description: '投资者',
-              avatar: '/avatars/user.png',
-              color: '#F59E0B'
-            }
-          };
-          
-          mentors.forEach(mentor => {
-            newAgentInfo[mentor.id] = {
-              id: mentor.id,
-              name: mentor.name,
-              description: mentor.title,
-              avatar: mentor.avatar,
-              color: mentor.color
+          if (mentors.length > 0) {
+            setSelectedMentors(mentors);
+            
+            // 转换导师数据为agentInfo格式
+            const newAgentInfo: Record<string, any> = {
+              user: {
+                id: 'user',
+                name: '您',
+                description: '投资者',
+                avatar: '/avatars/user.png',
+                color: '#F59E0B'
+              }
             };
-          });
-          
-          setAgentInfo(newAgentInfo);
+            
+            mentors.forEach(mentor => {
+              newAgentInfo[mentor.id] = {
+                id: mentor.id,
+                name: mentor.name,
+                description: mentor.title,
+                avatar: mentor.avatar,
+                color: mentor.color
+              };
+            });
+            
+            setAgentInfo(newAgentInfo);
+            setIsValidAccess(true);
+          } else {
+            // 导师列表为空，重定向到首页
+            console.log('导师列表为空，重定向到首页');
+            navigate('/', { replace: true });
+            return;
+          }
         } catch (error) {
           console.error('加载选中导师失败:', error);
           // 如果没有选中导师，重定向到选择页面
-          navigate('/');
+          navigate('/', { replace: true });
+          return;
         }
       } else {
         // 如果没有选中导师，重定向到选择页面
-        navigate('/');
+        console.log('没有找到选中的导师，重定向到首页');
+        navigate('/', { replace: true });
+        return;
       }
     }
   }, [navigate, location.state]);
@@ -146,13 +159,13 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
     return acc;
   }, {} as Record<string, number>));
 
-  // 如果没有选中导师，显示加载状态
-  if (selectedMentors.length === 0) {
+  // 如果访问无效，显示加载状态或重定向
+  if (!isValidAccess || selectedMentors.length === 0) {
     return (
       <div className={`flex flex-col h-full items-center justify-center ${className}`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">正在加载导师信息...</p>
+          <p className="text-gray-600">正在验证访问权限...</p>
         </div>
       </div>
     );
@@ -161,41 +174,43 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
   // 动态布局导师头像 - 优化布局
   const renderMentorAvatars = () => {
     const mentorCount = selectedMentors.length;
+    const centerX = 100; // 新的中心X坐标
+    const centerY = 70;  // 新的中心Y坐标
     
     if (mentorCount === 1) {
-      // 单个导师：居中显示
+      // 单个导师：偏离中心显示
       return (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+        <div className="absolute transform -translate-x-1/2 -translate-y-1/2" style={{ left: centerX + 60, top: centerY }}>
           <AgentAvatar
             agent={agentInfo[selectedMentors[0].id]}
-            size="lg"
-            className="border-4 border-white shadow-lg"
+            size="md"
+            showName={true}
+            className="bg-white rounded-full p-1 shadow-lg"
           />
         </div>
       );
     } else if (mentorCount === 2) {
       // 两个导师：左右对称
       return selectedMentors.map((mentor, index) => {
-        const x = index === 0 ? 40 : 120; // 左右对称位置
+        const x = centerX + (index === 0 ? -60 : 60);
         return (
           <div
             key={mentor.id}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2"
-            style={{ left: x, top: 64 }}
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
+            style={{ left: x, top: centerY }}
           >
             <AgentAvatar
               agent={agentInfo[mentor.id]}
               size="md"
-              className="border-4 border-white shadow-lg"
+              showName={true}
+              className="bg-white rounded-full p-1 shadow-lg"
             />
           </div>
         );
       });
     } else {
       // 多个导师：圆形布局
-      const radius = 80;
-      const centerX = 80;
-      const centerY = 64;
+      const radius = 70;
       
       return selectedMentors.map((mentor, index) => {
         const angle = (index * 2 * Math.PI) / mentorCount - Math.PI / 2;
@@ -205,13 +220,14 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
         return (
           <div
             key={mentor.id}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2"
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
             style={{ left: x, top: y }}
           >
             <AgentAvatar
               agent={agentInfo[mentor.id]}
-              size="md"
-              className="border-4 border-white shadow-lg"
+              size="sm"
+              showName={true}
+              className="bg-white rounded-full p-1 shadow-lg"
             />
           </div>
         );
@@ -222,14 +238,20 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* 动态圆桌布局头部 */}
-      <div className="flex justify-center items-center p-4 bg-gradient-to-r from-blue-50 via-purple-50 to-green-50 border-b">
-        <div className="relative" style={{ width: '160px', height: '128px' }}>
+      <div className="flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200">
+        {/* 会议标题 */}
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+          圆桌会议 ({selectedMentors.length + 1}人)
+        </h2>
+        
+        <div className="relative" style={{ width: '200px', height: '140px' }}>
           {/* 用户头像 - 中央 */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
             <AgentAvatar
               agent={agentInfo.user}
               size="lg"
-              className="border-4 border-white shadow-lg"
+              showName={true}
+              className="bg-white rounded-full p-1 shadow-xl"
             />
           </div>
           
@@ -237,24 +259,21 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
           {renderMentorAvatars()}
           
           {/* 连接线 - 从用户到每位导师 */}
-          <svg className="absolute inset-0 w-full h-full">
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
             {selectedMentors.map((mentor, index) => {
               const mentorCount = selectedMentors.length;
+              const centerX = 100;
+              const centerY = 70;
               let x, y;
               
               if (mentorCount === 1) {
-                // 单个导师：居中
-                x = 80;
-                y = 64;
+                x = centerX + 60;
+                y = centerY;
               } else if (mentorCount === 2) {
-                // 两个导师：左右对称
-                x = index === 0 ? 40 : 120;
-                y = 64;
+                x = centerX + (index === 0 ? -60 : 60);
+                y = centerY;
               } else {
-                // 多个导师：圆形布局
-                const radius = 80;
-                const centerX = 80;
-                const centerY = 64;
+                const radius = 70;
                 const angle = (index * 2 * Math.PI) / mentorCount - Math.PI / 2;
                 x = centerX + radius * Math.cos(angle);
                 y = centerY + radius * Math.sin(angle);
@@ -263,33 +282,29 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
               return (
                 <line
                   key={mentor.id}
-                  x1={80} y1={64}  // 用户位置（中央）
-                  x2={x} y2={y}
-                  stroke={mentor.color}
+                  x1={centerX} y1={centerY}  // 用户位置（中央）
+                  x2={x} y2={y}   // 导师位置
+                  stroke="#3B82F6"
                   strokeWidth="2"
-                  strokeDasharray="5,5"
+                  strokeDasharray="8,4"
+                  opacity="0.4"
                 />
               );
             })}
           </svg>
         </div>
         
-        <div className="ml-4">
-          <h2 className="text-xl font-semibold text-gray-800">投资大师圆桌对话</h2>
-          <p className="text-sm text-gray-600">
-            与{selectedMentors.map(m => m.name).join('、')}一起探讨投资策略
-          </p>
-          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500 flex-wrap">
-            {selectedMentors.map((mentor) => (
-              <span key={mentor.id} className="flex items-center">
-                <div 
-                  className="w-2 h-2 rounded-full mr-1"
-                  style={{ backgroundColor: mentor.color }}
-                ></div>
-                {mentor.investmentStyle}
-              </span>
-            ))}
-          </div>
+        {/* 导师风格标签 */}
+        <div className="flex flex-wrap justify-center gap-2 mt-4">
+          {selectedMentors.map((mentor) => (
+            <span 
+              key={mentor.id} 
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white shadow-sm"
+              style={{ backgroundColor: mentor.color }}
+            >
+              {mentor.name} · {mentor.investmentStyle}
+            </span>
+          ))}
         </div>
       </div>
 

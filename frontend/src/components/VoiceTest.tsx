@@ -9,7 +9,7 @@ import { testDirectSpeechSynthesis } from '../utils/speechTest'
 import { Mic, MicOff, Volume2, VolumeX, TestTube, Play, Stethoscope, Zap } from 'lucide-react'
 
 const VoiceTest: React.FC = () => {
-  const [testText, setTestText] = useState('您好，这是语音合成测试。智能交易客服系统已经准备就绪！')
+  const [testText, setTestText] = useState('您好，这是语音合成测试。投资大师圆桌会议系统已经准备就绪！')
   const [voiceTestResult, setVoiceTestResult] = useState<any>(null)
   const [isRunningTest, setIsRunningTest] = useState(false)
   

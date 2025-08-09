@@ -1,7 +1,7 @@
 {
   "name": "trading-customer-agent-frontend",
   "version": "1.0.0",
-  "description": "智能交易客服Agent前端界面",
+  "description": "投资大师圆桌会议前端界面",
   "type": "module",
   "scripts": {
     "dev": "vite",

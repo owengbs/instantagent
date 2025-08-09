@@ -35,15 +35,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, className = '' }
       <div className={`flex items-start space-x-3 max-w-[80%] ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
         {/* 头像 */}
         {isMultiAgent && message.agent ? (
-          <AgentAvatar
-            agent={message.agent}
-            size="sm"
-            showName={false}
-          />
+          <div className="flex-shrink-0">
+            <AgentAvatar
+              agent={message.agent}
+              size="sm"
+              showName={false}
+              className="shadow-md hover:shadow-lg transition-shadow"
+            />
+          </div>
         ) : (
-          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-md border-2 border-white ${
             isUser 
-              ? 'bg-blue-500 text-white' 
+              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
               : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
           }`}>
             {isUser ? (

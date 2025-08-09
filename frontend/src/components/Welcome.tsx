@@ -42,7 +42,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
               <MessageSquare className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-5xl font-bold mb-4">
-              智能交易客服
+              投资大师圆桌会议
             </h1>
             <p className="text-xl opacity-90 max-w-2xl mx-auto leading-relaxed">
               您的专属股票交易助手，为新用户提供专业、友好的指导服务

@@ -23,7 +23,7 @@ const LoadingScreen: React.FC = () => {
           transition={{ delay: 0.2 }}
           className="text-3xl font-bold mb-4"
         >
-          智能交易客服
+          投资大师圆桌会议
         </motion.h1>
         
         {/* 副标题 */}

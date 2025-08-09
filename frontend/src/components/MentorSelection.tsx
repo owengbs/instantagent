@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, ArrowRight, Users, Sparkles, Filter, Search, Zap } from 'lucide-react'
+import { ArrowRight, Users, Filter, Search, Zap } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Mentor } from '../types/mentor'
 import { DEFAULT_MENTORS } from '../config/mentors'
 import MentorCard from './MentorCard'
-import CustomMentorForm from './CustomMentorForm'
+
 import DynamicMentorGenerator from './DynamicMentorGenerator'
 import { useMentors } from '../hooks/useMentors'
 
@@ -16,23 +16,12 @@ const MentorSelection: React.FC = () => {
   // 优先使用后端数据，如果失败则使用默认数据
   const [availableMentors, setAvailableMentors] = useState<Mentor[]>(DEFAULT_MENTORS)
   const [selectedMentors, setSelectedMentors] = useState<Mentor[]>([])
-  const [showCustomForm, setShowCustomForm] = useState(false)
+
   const [showDynamicGenerator, setShowDynamicGenerator] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStyle, setFilterStyle] = useState<string>('')
 
-  // 从本地存储加载自定义导师
-  useEffect(() => {
-    const savedCustomMentors = localStorage.getItem('customMentors')
-    if (savedCustomMentors) {
-      try {
-        const customMentors = JSON.parse(savedCustomMentors)
-        setAvailableMentors(prev => [...prev, ...customMentors])
-      } catch (error) {
-        console.error('加载自定义导师失败:', error)
-      }
-    }
-  }, [])
+
 
   // 尝试从后端获取导师信息
   useEffect(() => {
@@ -40,17 +29,7 @@ const MentorSelection: React.FC = () => {
       try {
         const enabledMentors = getEnabledMentors()
         if (enabledMentors.length > 0) {
-          // 合并后端导师和自定义导师
-          const savedCustomMentors = localStorage.getItem('customMentors')
-          let customMentors: Mentor[] = []
-          if (savedCustomMentors) {
-            try {
-              customMentors = JSON.parse(savedCustomMentors)
-            } catch (error) {
-              console.error('加载自定义导师失败:', error)
-            }
-          }
-          setAvailableMentors([...enabledMentors, ...customMentors])
+          setAvailableMentors(enabledMentors)
         }
       } catch (error) {
         console.error('获取后端导师信息失败，使用默认数据:', error)
@@ -62,12 +41,6 @@ const MentorSelection: React.FC = () => {
     }
   }, [getEnabledMentors, mentorsLoading, mentorsError])
 
-  // 保存自定义导师到本地存储
-  const saveCustomMentors = (mentors: Mentor[]) => {
-    const customMentors = mentors.filter(mentor => mentor.isCustom)
-    localStorage.setItem('customMentors', JSON.stringify(customMentors))
-  }
-
   // 切换导师选择状态
   const toggleMentorSelection = (mentor: Mentor) => {
     setSelectedMentors(prev => {
@@ -78,27 +51,6 @@ const MentorSelection: React.FC = () => {
         return [...prev, mentor]
       }
     })
-  }
-
-  // 添加自定义导师
-  const handleAddCustomMentor = (newMentor: Mentor) => {
-    setAvailableMentors(prev => {
-      const updated = [...prev, newMentor]
-      saveCustomMentors(updated)
-      return updated
-    })
-  }
-
-  // 删除自定义导师
-  const handleRemoveMentor = (mentor: Mentor) => {
-    if (mentor.isCustom) {
-      setAvailableMentors(prev => {
-        const updated = prev.filter(m => m.id !== mentor.id)
-        saveCustomMentors(updated)
-        return updated
-      })
-      setSelectedMentors(prev => prev.filter(m => m.id !== mentor.id))
-    }
   }
 
   // 处理动态导师生成
@@ -208,18 +160,7 @@ const MentorSelection: React.FC = () => {
             </select>
           </div>
 
-          {/* 添加自定义导师按钮 */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowCustomForm(true)}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg"
-          >
-            <Sparkles className="w-5 h-5" />
-            <span className="font-medium">创建导师</span>
-          </motion.button>
-
-          {/* 动态导师生成按钮 */}
+          {/* 讨论话题按钮 */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -227,7 +168,7 @@ const MentorSelection: React.FC = () => {
             className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl hover:from-green-600 hover:to-blue-600 transition-all duration-300 shadow-lg"
           >
             <Zap className="w-5 h-5" />
-            <span className="font-medium">AI生成导师</span>
+            <span className="font-medium">讨论话题</span>
           </motion.button>
         </motion.div>
 
@@ -252,7 +193,6 @@ const MentorSelection: React.FC = () => {
                   mentor={mentor}
                   isSelected={selectedMentors.some(m => m.id === mentor.id)}
                   onToggleSelect={toggleMentorSelection}
-                  onRemove={mentor.isCustom ? handleRemoveMentor : undefined}
                 />
               </motion.div>
             ))}
@@ -273,14 +213,14 @@ const MentorSelection: React.FC = () => {
               没有找到匹配的导师
             </h3>
             <p className="text-gray-500 mb-4">
-              尝试调整搜索条件或创建自定义导师
+              尝试调整搜索条件或使用"讨论话题"功能
             </p>
             <button
-              onClick={() => setShowCustomForm(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+              onClick={() => setShowDynamicGenerator(true)}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              <span>创建自定义导师</span>
+              <Zap className="w-4 h-4" />
+              <span>讨论话题</span>
             </button>
           </motion.div>
         )}
@@ -313,14 +253,6 @@ const MentorSelection: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* 自定义导师表单 */}
-        <CustomMentorForm
-          isOpen={showCustomForm}
-          onClose={() => setShowCustomForm(false)}
-          onSubmit={handleAddCustomMentor}
-          existingMentors={availableMentors}
-        />
 
         {/* 动态导师生成器 */}
         <AnimatePresence>

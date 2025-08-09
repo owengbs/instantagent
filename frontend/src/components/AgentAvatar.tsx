@@ -39,35 +39,44 @@ const AgentAvatar: React.FC<AgentAvatarProps> = ({
 
 
   const getAvatarContent = () => {
+    // 如果有头像URL，优先使用图片
+    if (agent.avatar && agent.avatar !== '/avatars/user.png') {
+      return (
+        <img
+          src={agent.avatar}
+          alt={agent.name}
+          className="w-full h-full object-cover"
+        />
+      );
+    }
+    
+    // 用户头像
     if (agent.id === 'user') {
-      return <User className="w-full h-full text-blue-500" />;
+      return <User className="w-4/5 h-4/5 text-blue-500" />;
     }
-    if (agent.id === 'buffett') {
-      return <UserCircle className="w-full h-full text-blue-400" />;
-    }
-    if (agent.id === 'soros') {
-      return <Bot className="w-full h-full text-green-400" />;
-    }
-    if (agent.id === 'munger') {
-      return <Brain className="w-full h-full text-purple-400" />;
-    }
-    // 默认
-    return <User className="w-full h-full text-gray-400" />;
+    
+    // 默认导师图标
+    return <Brain className="w-4/5 h-4/5" style={{ color: agent.color }} />;
   };
 
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <div className={`${sizeClasses[size]} rounded-full overflow-hidden shadow-md`}>
-        {getAvatarContent()}
+      <div 
+        className={`${sizeClasses[size]} rounded-full overflow-hidden shadow-lg border-2 border-white bg-gradient-to-br from-white to-gray-50`}
+        style={{ borderColor: agent.color }}
+      >
+        <div className="w-full h-full flex items-center justify-center">
+          {getAvatarContent()}
+        </div>
       </div>
       
       {showName && (
-        <div className="mt-1 text-center">
-          <div className={`font-medium text-gray-800 ${nameSizeClasses[size]}`}>
+        <div className="mt-2 text-center">
+          <div className={`font-semibold text-gray-800 ${nameSizeClasses[size]}`}>
             {agent.name}
           </div>
           {showDescription && (
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-500 mt-1 max-w-16 truncate">
               {agent.description}
             </div>
           )}
