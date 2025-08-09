@@ -102,7 +102,7 @@ def get_mentor_avatar(agent_id: str) -> str:
 @router.get("/", response_model=List[MentorInfo])
 async def get_all_mentors():
     """
-    获取所有导师信息
+    获取所有导师信息（仅返回静态导师）
     
     Returns:
         导师信息列表
@@ -112,6 +112,10 @@ async def get_all_mentors():
         
         mentors = []
         for agent_id, agent in agent_manager.agents.items():
+            # 跳过动态生成的导师
+            if agent_manager.is_dynamic_mentor(agent_id):
+                continue
+                
             agent_config = agent_manager.agent_configs.get(agent_id, {})
             agent_info = agent.get_agent_info()
             
@@ -158,6 +162,10 @@ async def get_enabled_mentors():
         enabled_agents = agent_manager.get_enabled_agents()
         
         for agent_id, agent in enabled_agents.items():
+            # 跳过动态生成的导师
+            if agent_manager.is_dynamic_mentor(agent_id):
+                continue
+                
             agent_config = agent_manager.agent_configs.get(agent_id, {})
             agent_info = agent.get_agent_info()
             

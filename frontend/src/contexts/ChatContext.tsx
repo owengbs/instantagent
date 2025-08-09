@@ -130,7 +130,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const isDynamic = mentors.some((m: any) => m.isDynamic)
             if (isDynamic && dynamicSessionId) {
               console.log('🎯 使用动态导师会话:', dynamicSessionId)
-              // 对于动态导师，不需要发送导师ID，后端会根据会话ID获取
+              // 对于动态导师，也需要发送导师ID
+              wsRef.current?.send(JSON.stringify({
+                type: 'set_selected_mentors',
+                mentors: mentorIds
+              }))
             } else {
               wsRef.current?.send(JSON.stringify({
                 type: 'set_selected_mentors',

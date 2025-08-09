@@ -324,7 +324,16 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
 
   // 初始化客户端ID
   useEffect(() => {
-    clientIdRef.current = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    // 检查是否有动态导师会话ID
+    const dynamicSessionId = localStorage.getItem('dynamicSessionId')
+    if (dynamicSessionId) {
+      // 如果是动态导师会话，使用相同的会话ID
+      clientIdRef.current = dynamicSessionId
+      console.log('🎯 使用动态导师会话ID进行ASR:', dynamicSessionId)
+    } else {
+      // 否则生成新的客户端ID
+      clientIdRef.current = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    }
   }, [])
 
   // 说话结束检测（3秒静音）
