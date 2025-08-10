@@ -239,11 +239,20 @@ class RealtimeChatManager:
             session = self.user_sessions.get(client_id, {})
             session_id = session.get("session_id", f"multi_agent_{client_id}")
             
+            # 详细调试日志
+            logger.info(f"🔍 处理对话 - client_id: {client_id}")
+            logger.info(f"🔍 会话数据: {session}")
+            logger.info(f"🔍 session_id: {session_id}")
+            
             # 获取前端选择的导师信息
             selected_mentors = session.get("selected_mentors", [])
             
             # 检查是否有动态导师
             dynamic_mentors = session.get("dynamic_mentors", [])
+            
+            logger.info(f"🔍 selected_mentors: {selected_mentors}")
+            logger.info(f"🔍 dynamic_mentors: {dynamic_mentors}")
+            logger.info(f"🔍 当前agent_manager中的智能体: {list(agent_manager.agents.keys())}")
             if dynamic_mentors:
                 # 如果有动态导师，检查可用性
                 available_dynamic_mentors = [mid for mid in dynamic_mentors if mid in agent_manager.agents]
