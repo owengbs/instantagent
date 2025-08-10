@@ -130,10 +130,26 @@ async def get_session_messages_api(session_id: str):
     """
     try:
         messages = get_session_messages(session_id)
+        participants = get_session_participants(session_id)
+        
+        # 统计消息类型
+        message_types = {}
+        agent_message_counts = {}
+        
+        for msg in messages:
+            msg_type = msg.get("type", "unknown")
+            agent_id = msg.get("agent_id", "unknown")
+            
+            message_types[msg_type] = message_types.get(msg_type, 0) + 1
+            agent_message_counts[agent_id] = agent_message_counts.get(agent_id, 0) + 1
+        
         return {
             "success": True,
             "session_id": session_id,
             "message_count": len(messages),
+            "message_types": message_types,
+            "agent_message_counts": agent_message_counts,
+            "participants": [{"id": p.get("id"), "name": p.get("name")} for p in participants],
             "messages": messages
         }
         

@@ -43,10 +43,14 @@ class MeetingSummaryService:
             # 1. 整理对话历史
             conversation_text = self._format_conversation(messages, participants)
             
-            # 2. 构建总结提示词
-            summary_prompt = self._build_summary_prompt(conversation_text, session_info, participants)
+            # 2. 基于实际消息确定真实参与者
+            actual_participants = self._get_actual_participants_from_messages(messages, participants)
+            logger.info(f"🎯 实际参与者: {[p['name'] for p in actual_participants]}")
             
-            # 3. 调用大模型生成总结
+            # 3. 构建总结提示词（使用实际参与者）
+            summary_prompt = self._build_summary_prompt(conversation_text, session_info, actual_participants)
+            
+            # 4. 调用大模型生成总结
             response = self.openai_client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -57,11 +61,11 @@ class MeetingSummaryService:
                 temperature=0.3
             )
             
-            # 4. 解析总结内容
+            # 5. 解析总结内容
             summary_content = response.choices[0].message.content
             structured_summary = self._parse_summary(summary_content)
             
-            # 5. 构建完整的会议纪要
+            # 6. 构建完整的会议纪要
             meeting_summary = {
                 "id": f"summary_{session_info.get('session_id', datetime.now().strftime('%Y%m%d_%H%M%S'))}",
                 "meeting_info": {
@@ -69,7 +73,7 @@ class MeetingSummaryService:
                     "date": datetime.now().strftime("%Y年%m月%d日"),
                     "time": datetime.now().strftime("%H:%M"),
                     "duration": self._calculate_duration(messages),
-                    "participants_count": len(participants),
+                    "participants_count": len(actual_participants),
                     "messages_count": len(messages)
                 },
                 "participants": [
@@ -78,7 +82,7 @@ class MeetingSummaryService:
                         "role": p.get("title", p.get("description", "投资顾问")),
                         "message_count": len([m for m in messages if m.get("agent_id") == p.get("id")])
                     }
-                    for p in participants
+                    for p in actual_participants
                 ],
                 "summary": structured_summary,
                 "generated_at": datetime.now().isoformat(),
@@ -90,7 +94,9 @@ class MeetingSummaryService:
             
         except Exception as e:
             logger.error(f"❌ 生成会议总结失败: {e}")
-            return self._generate_fallback_summary(session_info, participants, len(messages))
+            # 如果actual_participants未定义，使用原始participants
+            fallback_participants = actual_participants if 'actual_participants' in locals() else participants
+            return self._generate_fallback_summary(session_info, fallback_participants, len(messages))
     
     def _format_conversation(self, messages: List[Dict[str, Any]], participants: List[Dict[str, Any]]) -> str:
         """格式化对话历史"""
@@ -99,15 +105,68 @@ class MeetingSummaryService:
         participant_names["user"] = "用户"
         
         formatted_lines = []
+        logger.info(f"🔍 格式化对话: 总共{len(messages)}条消息")
+        
         for msg in messages:
-            if msg.get("type") in ["user", "multi_agent_response"]:
-                speaker = participant_names.get(msg.get("agent_id", ""), "未知发言人")
+            # 处理用户消息和智能体回复消息
+            msg_type = msg.get("type", "")
+            if msg_type in ["user", "agent", "multi_agent_response"]:
+                agent_id = msg.get("agent_id", "")
+                speaker = participant_names.get(agent_id, f"未知发言人({agent_id})")
                 content = msg.get("content", "").strip()
+                
                 if content:
                     timestamp = msg.get("timestamp", "")
                     formatted_lines.append(f"【{speaker}】: {content}")
+                    logger.debug(f"✅ 添加消息: {speaker} - {content[:50]}...")
+                else:
+                    logger.warning(f"⚠️ 空消息: {msg}")
+            else:
+                logger.debug(f"🔍 跳过消息类型: {msg_type}")
         
-        return "\n\n".join(formatted_lines)
+        formatted_text = "\n\n".join(formatted_lines)
+        logger.info(f"📝 格式化完成: {len(formatted_lines)}条有效消息, 总长度{len(formatted_text)}字符")
+        return formatted_text
+    
+    def _get_actual_participants_from_messages(self, messages: List[Dict[str, Any]], all_participants: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        根据实际消息确定真正参与对话的参与者
+        
+        Args:
+            messages: 所有消息
+            all_participants: 所有可能的参与者
+            
+        Returns:
+            实际参与对话的参与者列表
+        """
+        # 从消息中提取实际发言的agent_id
+        actual_agent_ids = set()
+        for msg in messages:
+            msg_type = msg.get("type", "")
+            if msg_type in ["user", "agent", "multi_agent_response"]:
+                agent_id = msg.get("agent_id", "")
+                if agent_id:
+                    actual_agent_ids.add(agent_id)
+        
+        logger.info(f"🔍 从消息中找到的实际参与者ID: {actual_agent_ids}")
+        
+        # 筛选出实际参与的参与者
+        actual_participants = []
+        participant_id_map = {p.get("id", ""): p for p in all_participants}
+        
+        for agent_id in actual_agent_ids:
+            if agent_id in participant_id_map:
+                actual_participants.append(participant_id_map[agent_id])
+                logger.info(f"✅ 确认参与者: {participant_id_map[agent_id].get('name', agent_id)}")
+            else:
+                logger.warning(f"⚠️ 找不到参与者信息: {agent_id}")
+        
+        # 确保用户总是被包含（如果不在列表中的话）
+        user_participant = participant_id_map.get("user")
+        if user_participant and user_participant not in actual_participants:
+            actual_participants.insert(0, user_participant)
+        
+        return actual_participants
     
     def _build_summary_prompt(self, conversation: str, session_info: Dict[str, Any], participants: List[Dict[str, Any]]) -> str:
         """构建总结提示词"""
