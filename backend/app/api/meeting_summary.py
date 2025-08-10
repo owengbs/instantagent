@@ -152,12 +152,18 @@ def get_session_messages(session_id: str) -> List[Dict[str, Any]]:
         消息列表
     """
     try:
+        logger.info(f"🔍 查找会话消息: session_id={session_id}")
+        logger.info(f"🔍 当前conversation_sessions: {list(agent_manager.conversation_sessions.keys())}")
+        
         # 从agent_manager的conversation_sessions中获取消息
         if session_id in agent_manager.conversation_sessions:
             session = agent_manager.conversation_sessions[session_id]
-            return session.get("messages", [])
+            messages = session.get("messages", [])
+            logger.info(f"📋 找到 {len(messages)} 条消息")
+            return messages
         else:
             logger.warning(f"⚠️ 会话不存在: {session_id}")
+            logger.warning(f"💡 提示：可能的会话ID: {list(agent_manager.conversation_sessions.keys())}")
             return []
             
     except Exception as e:
@@ -223,10 +229,15 @@ def get_session_participants(session_id: str) -> List[Dict[str, Any]]:
             "description": "会议主持人和提问者"
         })
         
+        logger.info(f"🔍 获取会话参与者: session_id={session_id}")
+        logger.info(f"🔍 动态导师会话: {list(agent_manager.dynamic_mentors.keys())}")
+        logger.info(f"🔍 当前智能体: {list(agent_manager.agents.keys())}")
+        
         # 获取参与的导师
         if session_id in agent_manager.dynamic_mentors:
             # 动态导师会话
             dynamic_mentor_ids = agent_manager.dynamic_mentors[session_id]
+            logger.info(f"🎯 动态导师ID: {dynamic_mentor_ids}")
             for mentor_id in dynamic_mentor_ids:
                 if mentor_id in agent_manager.agents:
                     agent = agent_manager.agents[mentor_id]
@@ -236,20 +247,25 @@ def get_session_participants(session_id: str) -> List[Dict[str, Any]]:
                         "title": getattr(agent, 'title', '投资顾问'),
                         "description": agent.description
                     })
+                    logger.info(f"✅ 添加动态导师: {agent.name}")
+                else:
+                    logger.warning(f"⚠️ 动态导师不存在: {mentor_id}")
         else:
-            # 静态导师会话，获取启用的导师
+            # 静态导师会话，获取所有启用的导师
+            logger.info(f"📋 使用静态导师")
             for agent_id, agent in agent_manager.agents.items():
                 if agent_id != "user":  # 排除用户
                     config = agent_manager.agent_configs.get(agent_id, {})
-                    if config.get("enabled", True):
+                    if config.get("enabled", True) and not config.get("is_dynamic", False):
                         participants.append({
                             "id": agent_id,
                             "name": agent.name,
                             "title": getattr(agent, 'title', '投资顾问'),
                             "description": agent.description
                         })
+                        logger.info(f"✅ 添加静态导师: {agent.name}")
         
-        logger.info(f"👥 获取到 {len(participants)} 位参与者")
+        logger.info(f"👥 获取到 {len(participants)} 位参与者: {[p['name'] for p in participants]}")
         return participants
         
     except Exception as e:

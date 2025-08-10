@@ -46,11 +46,17 @@ class RealtimeChatManager:
         """建立连接"""
         await websocket.accept()
         self.active_connections[client_id] = websocket
+        # 如果是动态会话，直接使用client_id作为session_id，否则添加前缀
+        if client_id.startswith("dynamic_"):
+            session_id = client_id
+        else:
+            session_id = "realtime_" + client_id
+            
         self.user_sessions[client_id] = {
             "voice": "Cherry",
             "buffer": "",
             "is_speaking": False,
-            "session_id": "realtime_" + client_id,
+            "session_id": session_id,
             "asr_model": "paraformer-realtime-v2",
             "asr_language": "zh-CN",
             "is_listening": False,
@@ -237,7 +243,13 @@ class RealtimeChatManager:
         """处理多智能体对话"""
         try:
             session = self.user_sessions.get(client_id, {})
+            # 优先使用动态会话ID，如果没有则使用默认格式
             session_id = session.get("session_id", f"multi_agent_{client_id}")
+            
+            # 如果是动态会话，使用client_id作为session_id（因为client_id就是动态生成的session_id）
+            if client_id.startswith("dynamic_"):
+                session_id = client_id
+                logger.info(f"🎯 使用动态会话ID: {session_id}")
             
             # 详细调试日志
             logger.info(f"🔍 处理对话 - client_id: {client_id}")
