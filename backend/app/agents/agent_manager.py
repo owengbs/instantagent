@@ -101,6 +101,9 @@ class AgentManager:
             'priority': config.get('priority', 1),
             'enabled': config.get('enabled', True),
             'voice': getattr(agent_instance, 'voice', 'Cherry'),
+            'is_dynamic': config.get('is_dynamic', False),
+            'topic': config.get('topic', ''),
+            'session_id': config.get('session_id', ''),
             'registered_at': datetime.now().isoformat()
         }
         logger.info(f"🤖 智能体注册成功: {agent_id} - {config.get('name', agent_id)}")

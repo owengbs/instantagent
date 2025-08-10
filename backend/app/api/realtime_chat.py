@@ -245,17 +245,57 @@ class RealtimeChatManager:
             # 检查是否有动态导师
             dynamic_mentors = session.get("dynamic_mentors", [])
             if dynamic_mentors:
-                # 如果有动态导师，优先使用动态导师
-                available_mentors = [mid for mid in dynamic_mentors if mid in agent_manager.agents]
-                if available_mentors:
-                    selected_mentors = available_mentors
-                    logger.info(f"🎯 使用动态导师: {selected_mentors}")
+                # 如果有动态导师，检查可用性
+                available_dynamic_mentors = [mid for mid in dynamic_mentors if mid in agent_manager.agents]
+                if available_dynamic_mentors:
+                    # 如果用户有选择，使用用户选择的可用动态导师
+                    if selected_mentors:
+                        # 检查用户选择的导师是否在可用的动态导师中
+                        user_selected_available = [mid for mid in selected_mentors if mid in available_dynamic_mentors]
+                        if user_selected_available:
+                            selected_mentors = user_selected_available
+                            logger.info(f"🎯 使用用户选择的动态导师: {selected_mentors}")
+                        else:
+                            # 用户选择的动态导师不可用，使用所有可用的动态导师
+                            selected_mentors = available_dynamic_mentors
+                            logger.warning(f"⚠️ 用户选择的动态导师不可用，使用所有可用动态导师: {selected_mentors}")
+                    else:
+                        # 没有用户选择，使用所有可用的动态导师
+                        selected_mentors = available_dynamic_mentors
+                        logger.info(f"🎯 使用所有可用动态导师: {selected_mentors}")
                 else:
-                    logger.info("🎯 动态导师不可用，使用默认智能体")
+                    # 动态导师完全不可用，检查是否可以回退到默认导师
+                    logger.warning(f"⚠️ 动态导师不可用 (期望: {dynamic_mentors}, 实际可用: [])")
+                    logger.warning(f"⚠️ 这通常是因为后端重启导致动态导师丢失")
+                    
+                    # 回退到默认导师
+                    default_mentors = ['buffett', 'munger', 'soros']  # 选择几个默认导师
+                    available_default = [mid for mid in default_mentors if mid in agent_manager.agents]
+                    if available_default:
+                        selected_mentors = available_default
+                        logger.info(f"🔄 回退到默认导师: {selected_mentors}")
+                    else:
+                        logger.error("❌ 连默认导师都不可用！")
+                        selected_mentors = []
             elif selected_mentors:
-                logger.info(f"🎯 使用前端选择的导师: {selected_mentors}")
+                # 没有动态导师，检查用户选择的导师是否可用
+                available_selected = [mid for mid in selected_mentors if mid in agent_manager.agents]
+                if available_selected:
+                    selected_mentors = available_selected
+                    logger.info(f"🎯 使用前端选择的静态导师: {selected_mentors}")
+                else:
+                    logger.warning(f"⚠️ 前端选择的导师不可用: {selected_mentors}")
+                    # 回退到默认导师
+                    default_mentors = ['buffett', 'munger', 'soros']
+                    available_default = [mid for mid in default_mentors if mid in agent_manager.agents]
+                    selected_mentors = available_default
+                    logger.info(f"🔄 回退到默认导师: {selected_mentors}")
             else:
-                logger.info("🎯 未找到前端选择的导师，使用默认智能体")
+                # 没有任何选择，使用默认导师
+                default_mentors = ['buffett', 'munger', 'soros']
+                available_default = [mid for mid in default_mentors if mid in agent_manager.agents]
+                selected_mentors = available_default
+                logger.info(f"🎯 使用默认导师: {selected_mentors}")
             
             logger.info(f"🌊 开始处理多智能体对话: client_id={client_id}, message='{user_message[:50]}...'")
             

@@ -123,8 +123,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const mentors = JSON.parse(selectedMentors)
             const mentorIds = mentors.map((mentor: any) => mentor.id)
-            console.log('🎯 发送选中的导师信息到后端:', mentorIds)
-            console.log('📋 导师详细信息:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
+            console.log('🎯 ChatContext: 发送选中的导师信息到后端')
+            console.log('📦 ChatContext: localStorage原始数据:', selectedMentors)
+            console.log('📋 ChatContext: 解析后的导师:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
+            console.log('🏷️ ChatContext: 提取的导师ID:', mentorIds)
             
             // 检查是否为动态导师
             const isDynamic = mentors.some((m: any) => m.isDynamic)
@@ -153,6 +155,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const data = JSON.parse(event.data)
           console.log(`📨 WebSocket收到原始消息: type=${data.type}, agent_id=${data.agent_id || 'N/A'}, order=${data.order || 'N/A'}`)
+          
+          // 处理错误消息
+          if (data.type === 'error') {
+            console.error('❌ 后端错误:', data.message);
+            
+            // 如果是导师相关的错误，提示用户
+            if (data.message && (data.message.includes('导师') || data.message.includes('智能体') || data.message.includes('不可用'))) {
+              dispatch({ 
+                type: 'ADD_MESSAGE', 
+                payload: {
+                  id: generateId(),
+                  type: 'system',
+                  content: '抱歉，所选导师暂时不可用。这可能是因为系统重启导致。请返回首页重新选择导师。',
+                  timestamp: new Date().toISOString(),
+                  isError: true
+                }
+              });
+            }
+            return;
+          }
           
           switch (data.type) {
             case 'welcome':
