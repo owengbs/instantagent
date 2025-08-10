@@ -76,7 +76,10 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
           
           setGeneratedMentors(mentors)
           // 默认全选所有生成的导师
-          setSelectedMentorIds(mentors.map(m => m.id))
+          const mentorIds = mentors.map(m => m.id)
+          console.log('🎯 生成的导师ID:', mentorIds)
+          console.log('📋 生成的导师详情:', mentors.map(m => ({ id: m.id, name: m.name })))
+          setSelectedMentorIds(mentorIds)
           setIsGenerating(false)
           ws.close()
         } else if (data.type === 'error') {
@@ -101,19 +104,30 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
 
   // 切换导师选择状态
   const toggleMentorSelection = (mentorId: string) => {
+    console.log('🔄 切换导师选择:', mentorId)
     setSelectedMentorIds(prev => {
-      if (prev.includes(mentorId)) {
-        return prev.filter(id => id !== mentorId)
-      } else {
-        return [...prev, mentorId]
-      }
+      const newSelection = prev.includes(mentorId) 
+        ? prev.filter(id => id !== mentorId)
+        : [...prev, mentorId]
+      console.log('📝 选择状态更新:', { 
+        mentorId, 
+        before: prev, 
+        after: newSelection 
+      })
+      return newSelection
     })
   }
 
   // 开始对话
   const handleStartConversation = () => {
+    console.log('🚀 开始对话')
+    console.log('📋 当前选择的导师ID:', selectedMentorIds)
+    console.log('📋 所有生成的导师:', generatedMentors.map(m => ({ id: m.id, name: m.name })))
+    
     if (selectedMentorIds.length > 0) {
       const selectedMentors = generatedMentors.filter(mentor => selectedMentorIds.includes(mentor.id))
+      console.log('✅ 最终选择的导师:', selectedMentors.map(m => ({ id: m.id, name: m.name })))
+      
       onMentorsGenerated(selectedMentors, topic, sessionId)
       navigate('/chat', { 
         state: { 
@@ -234,7 +248,7 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
                       <MentorCard
                         mentor={mentor}
                         isSelected={selectedMentorIds.includes(mentor.id)}
-                        onToggleSelect={() => toggleMentorSelection(mentor.id)}
+                        onToggleSelect={(selectedMentor) => toggleMentorSelection(selectedMentor.id)}
                       />
                     </motion.div>
                   ))}
