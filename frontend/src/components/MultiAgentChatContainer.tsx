@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { FileText, LogOut } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import AgentAvatar from './AgentAvatar';
+import MeetingSummaryGenerator from './MeetingSummaryGenerator';
+import MeetingSummary from './MeetingSummary';
 import { useChat } from '../contexts/ChatContext';
 import { Mentor } from '../types/mentor';
 
@@ -19,6 +22,11 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedMentors, setSelectedMentors] = useState<Mentor[]>([]);
   const [isValidAccess, setIsValidAccess] = useState(false);
+  const [showSummaryGenerator, setShowSummaryGenerator] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string>('');
+  const [topic, setTopic] = useState<string>('');
   const [agentInfo, setAgentInfo] = useState<Record<string, any>>({
     user: {
       id: 'user',
@@ -66,6 +74,10 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
       localStorage.setItem('dynamicSessionId', routeState.sessionId || '');
       localStorage.setItem('dynamicTopic', routeState.topic || '');
       
+      // 设置会话信息
+      setSessionId(routeState.sessionId || '');
+      setTopic(routeState.topic || '');
+      
       console.log('使用动态导师:', mentors.length, '位导师');
       setIsValidAccess(true);
     } else {
@@ -103,6 +115,15 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
             });
             
             setAgentInfo(newAgentInfo);
+            
+            // 从localStorage获取会话信息
+            const dynamicSessionId = localStorage.getItem('dynamicSessionId');
+            const dynamicTopic = localStorage.getItem('dynamicTopic');
+            if (dynamicSessionId) {
+              setSessionId(dynamicSessionId);
+              setTopic(dynamicTopic || '');
+            }
+            
             setIsValidAccess(true);
           } else {
             // 导师列表为空，重定向到首页
@@ -129,6 +150,67 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // 处理结束对话
+  const handleEndConversation = () => {
+    if (messages.length < 2) {
+      alert('对话内容太少，无法生成有意义的会议纪要');
+      return;
+    }
+    setShowSummaryGenerator(true);
+  };
+
+  // 处理会议总结生成完成
+  const handleSummaryGenerated = (summary: any) => {
+    setSummaryData(summary);
+    setShowSummaryGenerator(false);
+    setShowSummary(true);
+  };
+
+  // 处理总结导出
+  const handleExportSummary = () => {
+    if (!summaryData) return;
+    
+    // 创建一个简单的文本格式导出
+    const exportContent = `
+会议纪要
+========
+
+会议主题：${summaryData.meeting_info?.topic || '投资圆桌讨论'}
+会议日期：${summaryData.meeting_info?.date || ''}
+会议时长：${summaryData.meeting_info?.duration || ''}
+参与人数：${summaryData.meeting_info?.participants_count || 0}位
+
+会议要点
+--------
+${summaryData.summary?.executive_summary || ''}
+
+关键洞察
+--------
+${summaryData.summary?.key_insights?.map((insight: any, index: number) => 
+  `${index + 1}. ${insight.topic}\n${insight.insights?.map((i: string) => `   • ${i}`).join('\n') || ''}`
+).join('\n\n') || ''}
+
+行动建议
+--------
+${summaryData.summary?.actionable_advice?.map((advice: string, index: number) => 
+  `${index + 1}. ${advice}`
+).join('\n') || ''}
+
+生成时间：${new Date(summaryData.generated_at).toLocaleString()}
+    `.trim();
+
+    // 创建下载链接
+    const blob = new Blob([exportContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `会议纪要_${summaryData.meeting_info?.topic || '圆桌讨论'}_${new Date().toLocaleDateString()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // 过滤多智能体消息 - 支持动态导师
   const multiAgentMessages = messages.filter(msg => {
@@ -385,6 +467,47 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
         
         <div ref={messagesEndRef} />
       </div>
+
+      {/* 结束对话按钮 */}
+      {messages.length > 1 && (
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={handleEndConversation}
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105"
+            >
+              <FileText className="w-5 h-5" />
+              <span>生成会议纪要</span>
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 transition-all duration-300"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>返回首页</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 会议总结生成器 */}
+      {showSummaryGenerator && (
+        <MeetingSummaryGenerator
+          sessionId={sessionId}
+          topic={topic}
+          onSummaryGenerated={handleSummaryGenerated}
+          onClose={() => setShowSummaryGenerator(false)}
+        />
+      )}
+
+      {/* 会议总结显示 */}
+      {showSummary && summaryData && (
+        <MeetingSummary
+          summaryData={summaryData}
+          onClose={() => setShowSummary(false)}
+          onDownload={handleExportSummary}
+        />
+      )}
     </div>
   );
 };
