@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Mic, MicOff, Send, Volume2, VolumeX } from 'lucide-react';
 import { useChat } from '../contexts/ChatContext';
 import { useQwenSpeechRecognition } from '../hooks/useQwenSpeechRecognition';
+import VoiceStateIndicator from './VoiceStateIndicator';
 
 interface VoiceChatInputProps {
   onSendMessage: (message: string) => void;
@@ -17,6 +18,7 @@ const VoiceChatInput: React.FC<VoiceChatInputProps> = ({ onSendMessage }) => {
     isListening,
     isConnecting,
     error,
+    voiceState,
     startListening,
     stopListening,
     resetTranscript

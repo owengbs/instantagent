@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Mic, MicOff, Volume2, VolumeX, Zap } from 'lucide-react'
 import { useQwenSpeechRecognition } from '../hooks/useQwenSpeechRecognition'
 import { useRealtimeChat } from '../hooks/useRealtimeChat'
+import VoiceStateIndicator from './VoiceStateIndicator'
 
 interface RealtimeVoiceChatProps {
   disabled?: boolean
@@ -15,7 +16,8 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled }) => {
   // 使用Qwen语音识别
   const {
     startListening,
-    stopListening
+    stopListening,
+    voiceState
   } = useQwenSpeechRecognition({
     onResult: (text, isFinal) => {
       console.log('🎤 RealtimeVoiceChat 收到ASR结果:', { text, isFinal })
@@ -106,8 +108,16 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ disabled }) => {
   return (
     <div className="realtime-voice-chat">
       
-      {/* 语音识别状态 */}
-      <div className="flex items-center justify-between mb-4">
+      {/* 智能语音状态指示器 */}
+      <div className="mb-4">
+        <VoiceStateIndicator 
+          voiceState={voiceState}
+          showDetails={true}
+        />
+      </div>
+      
+      {/* 传统语音识别状态（备用显示） */}
+      <div className="flex items-center justify-between mb-4 opacity-60">
         <div className="flex items-center space-x-2">
           {isListening ? (
             <Mic className="w-4 h-4 text-red-500 animate-pulse" />

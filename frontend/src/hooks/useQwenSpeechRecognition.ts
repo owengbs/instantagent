@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useChat } from '../contexts/ChatContext'
 import { useQwenTTS } from './useQwenTTS'
 import { API_CONFIG } from '../config/api'
+import useSmartVoiceManager, { SmartVoiceState } from './useSmartVoiceManager'
 import { checkMediaSupport, getMediaErrorInfo } from '../utils/mediaUtils'
 
 interface QwenSpeechRecognitionOptions {
@@ -20,6 +21,10 @@ interface QwenSpeechRecognitionReturn {
   transcript: string
   finalTranscript: string
   error: string | null
+  
+  // 智能语音管理状态
+  voiceState: SmartVoiceState
+  
   startListening: () => Promise<void>
   stopListening: () => void
   resetTranscript: () => void
@@ -35,6 +40,8 @@ class AudioRecorder {
   private isRecording = false
   private sampleRate: number
   private onAudioData: (data: Int16Array) => void
+  private onAudioFrame: (data: Float32Array) => void
+  private getSensitivityMultiplier: () => number
   
   // 音频缓冲区
   private pcmBuffer: Int16Array[] = []
@@ -76,10 +83,17 @@ class AudioRecorder {
     return resampled
   }
 
-  constructor(sampleRate: number = 16000, onAudioData: (data: Int16Array) => void) {
+  constructor(
+    sampleRate: number = 16000, 
+    onAudioData: (data: Int16Array) => void,
+    onAudioFrame: (data: Float32Array) => void = () => {},
+    getSensitivityMultiplier: () => number = () => 1.0
+  ) {
     this.context = new (window.AudioContext || (window as any).webkitAudioContext)()
     this.sampleRate = sampleRate
     this.onAudioData = onAudioData
+    this.onAudioFrame = onAudioFrame
+    this.getSensitivityMultiplier = getSensitivityMultiplier
   }
   
   // 生成静音音频数据
@@ -166,12 +180,13 @@ class AudioRecorder {
         const inputBuffer = event.inputBuffer
         const inputData = inputBuffer.getChannelData(0)
         
+        // 发送音频帧到智能语音管理器
+        this.onAudioFrame(inputData)
+        
         // 检测音频活动
         if (this.detectAudioActivity(inputData)) {
           this.lastAudioActivity = Date.now()
         }
-        
-
         
         // 检查采样率并重采样
         let processedData: Float32Array<ArrayBuffer> = inputData as Float32Array<ArrayBuffer>
@@ -183,11 +198,16 @@ class AudioRecorder {
           processedData = this.resampleAudio(inputData as Float32Array<ArrayBuffer>, inputBuffer.sampleRate, this.sampleRate)
         }
         
+        // 根据智能语音状态调整音频灵敏度
+        const sensitivityMultiplier = this.getSensitivityMultiplier()
+        
         // 转换为Int16Array (PCM格式)
         const pcmData = new Int16Array(processedData.length)
         for (let i = 0; i < processedData.length; i++) {
           // 确保音频数据在有效范围内
-          const sample = Math.max(-1, Math.min(1, processedData[i]))
+          let sample = Math.max(-1, Math.min(1, processedData[i]))
+          // 应用灵敏度调整
+          sample *= sensitivityMultiplier
           pcmData[i] = Math.max(-32768, Math.min(32767, sample * 32768))
         }
         
@@ -294,18 +314,46 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
   // 获取聊天上下文
   const { sendMessage } = useChat()
   
+  // 智能语音管理器
+  const voiceManager = useSmartVoiceManager({
+    onTTSStart: () => {
+      console.log('🔊 智能语音管理: TTS开始播放')
+    },
+    onTTSEnd: () => {
+      console.log('🔊 智能语音管理: TTS播放结束')
+    },
+    onUserInterrupt: () => {
+      console.log('🗣️ 智能语音管理: 检测到用户打断')
+      // 可以在这里处理打断逻辑，比如停止当前TTS播放
+    },
+    onStateChange: (state) => {
+      // 根据麦克风状态调整音频处理逻辑
+      if (state.microphoneState === 'muted') {
+        // 完全静音时停止音频处理
+        console.log('🔇 麦克风已静音')
+      } else if (state.microphoneState === 'reduced') {
+        console.log('🔉 麦克风灵敏度已降低')
+      } else {
+        console.log('🎤 麦克风处于正常状态')
+      }
+    }
+  })
+
   // 获取TTS功能
   const { speak } = useQwenTTS({
     voice: 'Cherry',
-    onStart: () => console.log('🔊 TTS开始播放'),
+    onStart: () => {
+      console.log('🔊 TTS开始播放')
+      voiceManager.startTTSPlayback()
+    },
     onEnd: () => {
-      console.log('🔊 TTS播放结束，准备下一轮对话')
-      // TTS播放结束后，可以重新开始录音
-      // 这里可以添加重新开始录音的逻辑
+      console.log('🔊 TTS播放结束')
+      voiceManager.endTTSPlayback()
     },
     onError: (error) => {
       console.error('❌ TTS播放错误:', error)
       setError(`TTS播放错误: ${error}`)
+      voiceManager.endTTSPlayback() // 确保在错误时也结束TTS状态
     }
   })
 
@@ -747,7 +795,19 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
       await connectWebSocket()
 
       // 创建音频录制器
-      recorderRef.current = new AudioRecorder(16000, handleAudioData)
+      recorderRef.current = new AudioRecorder(
+        16000, 
+        handleAudioData, 
+        voiceManager.processAudioFrame,
+        () => {
+          // 根据智能语音状态返回灵敏度倍数
+          switch (voiceManager.state.microphoneState) {
+            case 'reduced': return 0.2 // 降低到20%灵敏度
+            case 'muted': return 0.0   // 完全静音
+            default: return 1.0        // 正常灵敏度
+          }
+        }
+      )
       
       // 开始录制
       await recorderRef.current.start()
@@ -841,6 +901,7 @@ export const useQwenSpeechRecognition = (options: QwenSpeechRecognitionOptions =
     transcript,
     finalTranscript,
     error,
+    voiceState: voiceManager.state,
     startListening,
     stopListening,
     resetTranscript
