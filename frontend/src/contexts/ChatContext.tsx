@@ -123,10 +123,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const mentors = JSON.parse(selectedMentors)
             const mentorIds = mentors.map((mentor: any) => mentor.id)
-            console.log('🎯 ChatContext: 发送选中的导师信息到后端')
-            console.log('📦 ChatContext: localStorage原始数据:', selectedMentors)
-            console.log('📋 ChatContext: 解析后的导师:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
-            console.log('🏷️ ChatContext: 提取的导师ID:', mentorIds)
+            console.log('🎯 发送选中的导师信息到后端:', mentorIds)
+            console.log('📋 导师详细信息:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
             
             // 检查是否为动态导师
             const isDynamic = mentors.some((m: any) => m.isDynamic)

@@ -71,24 +71,15 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
     } else {
       // 从本地存储加载选中的导师
       const savedMentors = localStorage.getItem('selectedMentors');
-      console.log('🔍 MultiAgentChatContainer: 检查localStorage中的导师数据');
-      console.log('📦 MultiAgentChatContainer: savedMentors原始数据:', savedMentors);
-      
-      // 检查是否有dynamicSessionId，这表明用户之前使用了动态导师
-      const dynamicSessionId = localStorage.getItem('dynamicSessionId');
-      if (dynamicSessionId) {
-        console.log('🎯 MultiAgentChatContainer: 检测到动态会话ID:', dynamicSessionId);
-        console.log('⚠️ MultiAgentChatContainer: 如果出现导师不匹配问题，可能是后端重启导致动态导师丢失');
-      }
+      console.log('🔍 加载本地存储的导师数据');
       
       if (savedMentors) {
         try {
           const mentors: Mentor[] = JSON.parse(savedMentors);
-          console.log('📋 MultiAgentChatContainer: 解析后的导师数据:', mentors.map(m => ({ id: m.id, name: m.name })));
+          console.log('📋 解析后的导师数据:', mentors.map(m => ({ id: m.id, name: m.name })));
           
           if (mentors.length > 0) {
             setSelectedMentors(mentors);
-            console.log('✅ MultiAgentChatContainer: 成功设置选中导师，数量:', mentors.length);
             
             // 转换导师数据为agentInfo格式
             const newAgentInfo: Record<string, any> = {
@@ -109,27 +100,25 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
                 avatar: mentor.avatar,
                 color: mentor.color
               };
-              console.log(`🔗 MultiAgentChatContainer: 映射导师 ${mentor.id} -> ${mentor.name}`);
             });
             
             setAgentInfo(newAgentInfo);
             setIsValidAccess(true);
-            console.log('🎯 MultiAgentChatContainer: agentInfo设置完成');
           } else {
             // 导师列表为空，重定向到首页
-            console.log('❌ MultiAgentChatContainer: 导师列表为空，重定向到首页');
+            console.log('导师列表为空，重定向到首页');
             navigate('/', { replace: true });
             return;
           }
         } catch (error) {
-          console.error('❌ MultiAgentChatContainer: 加载选中导师失败:', error);
+          console.error('加载选中导师失败:', error);
           // 如果没有选中导师，重定向到选择页面
           navigate('/', { replace: true });
           return;
         }
       } else {
         // 如果没有选中导师，重定向到选择页面
-        console.log('❌ MultiAgentChatContainer: 没有找到选中的导师，重定向到首页');
+        console.log('没有找到选中的导师，重定向到首页');
         navigate('/', { replace: true });
         return;
       }
@@ -148,26 +137,21 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
       return true;
     }
     
-    // 显示多智能体回复消息 - 不过滤，显示所有后端发送的消息
+    // 显示多智能体回复消息
     if (msg.type === 'multi_agent_response') {
-      console.log(`🔍 MultiAgentChatContainer: 接受multi_agent_response消息 - ${msg.agent_id} (${msg.agent_name})`);
       return true;
     }
     
     // 显示单个智能体消息（兼容旧格式）
     if (msg.agent_id && selectedMentors.some(mentor => mentor.id === msg.agent_id)) {
-      console.log(`🔍 MultiAgentChatContainer: 接受智能体消息 - ${msg.agent_id} (基于agent_id匹配)`);
       return true;
     }
     
     // 显示智能体ID类型的消息（新格式）
     if (selectedMentors.some(mentor => mentor.id === msg.type)) {
-      console.log(`🔍 MultiAgentChatContainer: 接受智能体消息 - ${msg.type} (基于type匹配)`);
       return true;
     }
     
-    // 记录被过滤的消息
-    console.log(`🚫 MultiAgentChatContainer: 过滤消息 - type: ${msg.type}, agent_id: ${msg.agent_id || 'undefined'}`);
     return false;
   });
 

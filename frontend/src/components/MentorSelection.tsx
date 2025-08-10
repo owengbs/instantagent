@@ -69,23 +69,8 @@ const MentorSelection: React.FC = () => {
     // 保存选中的导师到本地存储或状态管理
     localStorage.setItem('selectedMentors', JSON.stringify(selectedMentors))
     
-    // 详细调试信息
-    console.log('🎯 MentorSelection: 开始圆桌会议')
-    console.log('📋 MentorSelection: 选中的导师详情:', selectedMentors.map(m => ({ 
-      id: m.id, 
-      name: m.name,
-      title: m.title 
-    })))
-    console.log('💾 MentorSelection: 已保存到localStorage:', JSON.stringify(selectedMentors.map(m => ({ id: m.id, name: m.name }))))
-    
-    // 验证保存是否成功
-    const saved = localStorage.getItem('selectedMentors')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      console.log('✅ MentorSelection: localStorage验证成功，导师数量:', parsed.length)
-    } else {
-      console.error('❌ MentorSelection: localStorage保存失败！')
-    }
+    // 调试信息
+    console.log('🎯 开始圆桌会议，选中的导师:', selectedMentors.map(m => ({ id: m.id, name: m.name })))
     
     // 导航到聊天页面
     navigate('/chat')
