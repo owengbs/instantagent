@@ -12,7 +12,7 @@ from ..core.multi_user_manager import multi_user_manager
 logger = logging.getLogger(__name__)
 
 # 创建路由
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(tags=["users"])
 
 class UserStatsResponse(BaseModel):
     """用户统计响应"""

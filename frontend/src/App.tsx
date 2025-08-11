@@ -11,6 +11,8 @@ import MentorSelection from './components/MentorSelection.tsx'
 import { DynamicMentorTest } from './components/DynamicMentorTest'
 import { MentorManagement } from './components/MentorManagement'
 import DebugMentorTest from './components/DebugMentorTest'
+import MultiUserTestPage from './components/MultiUserTestPage'
+import UserManagementPanel from './components/UserManagementPanel'
 
 import { ChatProvider, useChat } from './contexts/ChatContext'
 
@@ -127,6 +129,18 @@ function App() {
                     >
                       调试
                     </Link>
+                    <Link 
+                      to="/multi-user-test" 
+                      className="text-orange-600 hover:text-orange-900 px-3 py-2 rounded-md text-sm font-medium"
+                    >
+                      多用户测试
+                    </Link>
+                    <Link 
+                      to="/user-management" 
+                      className="text-purple-600 hover:text-purple-900 px-3 py-2 rounded-md text-sm font-medium"
+                    >
+                      用户管理
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -140,6 +154,8 @@ function App() {
             <Route path="/test" element={<DynamicMentorTest />} />
             <Route path="/management" element={<MentorManagement />} />
             <Route path="/debug" element={<DebugMentorTest />} />
+            <Route path="/multi-user-test" element={<MultiUserTestPage />} />
+            <Route path="/user-management" element={<UserManagementPanel />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
