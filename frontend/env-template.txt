@@ -1,0 +1,16 @@
+# 环境变量配置模板
+# 复制此文件为 .env.production 并根据需要修改
+
+# API基础URL（HTTP）
+# VITE_API_BASE_URL=https://yourdomain.com
+
+# WebSocket基础URL  
+# VITE_WS_BASE_URL=wss://yourdomain.com
+
+# 主机地址
+# VITE_HOST=yourdomain.com
+
+# 注意：
+# 1. 如果不设置这些变量，系统会使用智能默认配置
+# 2. 生产环境默认使用相对路径，通常无需修改
+# 3. 只有在特殊部署场景下才需要设置自定义URL

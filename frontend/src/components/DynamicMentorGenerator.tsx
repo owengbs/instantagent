@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Users, ArrowRight, Loader2, X, CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { API_CONFIG } from '../config/api'
 import { Mentor } from '../types/mentor'
 import MentorCard from './MentorCard'
 
@@ -42,7 +43,7 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
       setSessionId(sessionId)
 
       // 通过WebSocket发送生成请求
-      const ws = new WebSocket(`ws://localhost:8000/realtime/ws/${sessionId}`)
+      const ws = new WebSocket(API_CONFIG.endpoints.chatWs(sessionId))
       
       ws.onopen = () => {
         ws.send(JSON.stringify({

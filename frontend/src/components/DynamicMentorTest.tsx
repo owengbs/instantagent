@@ -3,6 +3,7 @@
  */
 import React, { useState } from 'react'
 import { useMentors } from '../hooks/useMentors'
+import { API_CONFIG } from '../config/api'
 
 export const DynamicMentorTest: React.FC = () => {
   const {
@@ -133,7 +134,7 @@ export const DynamicMentorTest: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">API端点测试</h3>
           <div className="space-y-3">
             <a 
-              href="http://localhost:8000/api/mentors/" 
+              href={`${API_CONFIG.getHttpBaseUrl()}/mentors/`}
               target="_blank" 
               rel="noopener noreferrer"
               className="block px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
@@ -141,7 +142,7 @@ export const DynamicMentorTest: React.FC = () => {
               获取所有导师信息
             </a>
             <a 
-              href="http://localhost:8000/api/mentors/enabled" 
+              href={`${API_CONFIG.getHttpBaseUrl()}/mentors/enabled`}
               target="_blank" 
               rel="noopener noreferrer"
               className="block px-4 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
@@ -149,7 +150,7 @@ export const DynamicMentorTest: React.FC = () => {
               获取启用的导师信息
             </a>
             <a 
-              href="http://localhost:8000/api/mentors/stats/summary" 
+              href={`${API_CONFIG.getHttpBaseUrl()}/mentors/stats/summary`}
               target="_blank" 
               rel="noopener noreferrer"
               className="block px-4 py-2 bg-purple-100 text-purple-800 rounded hover:bg-purple-200 transition-colors"

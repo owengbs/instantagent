@@ -1,14 +1,11 @@
 // WebSocket连接测试工具
+import { API_CONFIG } from '../config/api'
 
 export async function testWebSocketConnection() {
   console.log('🧪 开始测试WebSocket连接...')
   
   return new Promise((resolve, reject) => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = process.env.NODE_ENV === 'development' 
-      ? 'localhost:8000' 
-      : window.location.host
-    const wsUrl = `${protocol}//${host}/api/chat/ws/test-session`
+    const wsUrl = API_CONFIG.endpoints.chatWs('test-session')
     
     console.log('🔗 连接URL:', wsUrl)
     
