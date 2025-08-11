@@ -17,6 +17,7 @@ from app.api.realtime_chat import router as realtime_router
 from app.api.asr_websocket import router as asr_ws_router
 from app.api.mentors import router as mentors_router
 from app.api.meeting_summary import router as meeting_summary_router
+from app.api.user_management import router as user_management_router
 
 
 @asynccontextmanager
@@ -75,6 +76,7 @@ app.include_router(realtime_router, prefix="/api")
 app.include_router(asr_ws_router, prefix="/api")
 app.include_router(mentors_router, prefix="/api")
 app.include_router(meeting_summary_router, prefix="/api")
+app.include_router(user_management_router, prefix="/api")
 
 
 @app.get("/")

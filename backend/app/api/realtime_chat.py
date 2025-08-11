@@ -19,6 +19,7 @@ from ..services.qwen_tts_realtime import qwen_tts_realtime
 from ..services.qwen_asr_realtime import qwen_asr_realtime
 from ..services.text_cleaner import text_cleaner
 from ..core.config import settings
+from ..core.multi_user_manager import multi_user_manager
 from .mentors import get_mentor_avatar, get_mentor_color
 
 # 设置日志
@@ -45,7 +46,16 @@ class RealtimeChatManager:
     async def connect(self, websocket: WebSocket, client_id: str):
         """建立连接"""
         await websocket.accept()
+        
+        # 解析用户ID和会话ID
+        user_id, session_id = self._parse_client_id(client_id)
+        
+        # 注册到多用户管理器
+        multi_user_manager.register_connection(client_id, user_id, websocket)
+        
+        # 兼容原有系统的连接管理
         self.active_connections[client_id] = websocket
+        
         # 如果是动态会话，直接使用client_id作为session_id，否则添加前缀
         if client_id.startswith("dynamic_"):
             session_id = client_id
@@ -64,10 +74,37 @@ class RealtimeChatManager:
             "last_speech_time": None
         }
         self.result_queues[client_id] = queue.Queue()
-        logger.info(f"🔌 实时对话客户端连接: {client_id}")
+        logger.info(f"🔌 实时对话客户端连接: {client_id} (用户: {user_id})")
+    
+    def _parse_client_id(self, client_id: str) -> tuple[str, str]:
+        """解析client_id获取用户ID和会话ID"""
+        try:
+            # 格式: user_id_session_timestamp_random 或 dynamic_user_id_timestamp_random
+            parts = client_id.split('_')
+            if len(parts) >= 4:
+                if client_id.startswith('dynamic_'):
+                    # dynamic_user_id_timestamp_random
+                    user_id = parts[1]
+                    session_id = client_id
+                else:
+                    # user_id_session_timestamp_random
+                    user_id = parts[0]
+                    session_id = client_id
+            else:
+                # 兼容旧格式
+                user_id = client_id
+                session_id = client_id
+            
+            return user_id, session_id
+        except Exception as e:
+            logger.warning(f"⚠️ 解析client_id失败: {client_id}, 使用默认值")
+            return client_id, client_id
     
     def disconnect(self, client_id: str):
         """断开连接"""
+        # 从多用户管理器注销连接
+        multi_user_manager.unregister_connection(client_id)
+        
         # 停止ASR任务
         if client_id in self.asr_tasks:
             self.asr_tasks[client_id].cancel()
@@ -242,19 +279,25 @@ class RealtimeChatManager:
     async def process_multi_agent_chat(self, client_id: str, user_message: str):
         """处理多智能体对话"""
         try:
-            session = self.user_sessions.get(client_id, {})
-            # 优先使用动态会话ID，如果没有则使用默认格式
-            session_id = session.get("session_id", f"multi_agent_{client_id}")
+            # 解析用户ID和会话ID
+            user_id, session_id = self._parse_client_id(client_id)
             
-            # 如果是动态会话，使用client_id作为session_id（因为client_id就是动态生成的session_id）
+            # 获取用户会话
+            user_session = multi_user_manager.get_user_session(user_id, session_id)
+            if not user_session:
+                # 创建新会话
+                user_session = multi_user_manager.create_user_session(user_id, session_id)
+            
+            # 兼容原有系统
+            session = self.user_sessions.get(client_id, {})
             if client_id.startswith("dynamic_"):
                 session_id = client_id
                 logger.info(f"🎯 使用动态会话ID: {session_id}")
             
             # 详细调试日志
             logger.info(f"🔍 处理对话 - client_id: {client_id}")
+            logger.info(f"🔍 用户ID: {user_id}, 会话ID: {session_id}")
             logger.info(f"🔍 会话数据: {session}")
-            logger.info(f"🔍 session_id: {session_id}")
             
             # 获取前端选择的导师信息
             selected_mentors = session.get("selected_mentors", [])

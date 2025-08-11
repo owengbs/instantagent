@@ -2,6 +2,10 @@ import React, { createContext, useContext, useReducer, useCallback, useEffect, u
 import { ChatContextType, ChatState, Message, UserPreferences } from '../types'
 import { generateId, storage } from '../utils'
 import { API_CONFIG } from '../config/api'
+import { userManager } from '../utils/userManager'
+
+// 获取或创建用户信息
+const currentUser = userManager.getCurrentUser()
 
 // 初始状态
 const initialState: ChatState = {
@@ -10,7 +14,7 @@ const initialState: ChatState = {
   isTyping: false,
   connectionError: null,
   sessionId: generateId(),
-  userId: 'default'
+  userId: currentUser.id
 }
 
 // 初始偏好设置
@@ -103,10 +107,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // 检查是否有动态导师会话ID
+      // 使用用户管理器生成连接ID
+      const user = userManager.getCurrentUser()
       const dynamicSessionId = localStorage.getItem('dynamicSessionId')
       const sessionId = dynamicSessionId || state.sessionId
-      const wsUrl = API_CONFIG.endpoints.chatWs(sessionId)
+      
+      // 生成用户特定的连接ID
+      const connectionId = userManager.generateConnectionId(sessionId)
+      const wsUrl = API_CONFIG.endpoints.chatWs(connectionId)
 
       wsRef.current = new WebSocket(wsUrl)
 

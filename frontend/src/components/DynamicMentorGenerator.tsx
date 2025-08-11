@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Users, ArrowRight, Loader2, X, CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { API_CONFIG } from '../config/api'
+import { userManager } from '../utils/userManager'
 import { Mentor } from '../types/mentor'
 import MentorCard from './MentorCard'
 
@@ -25,7 +26,7 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
 
   // 生成会话ID
   const generateSessionId = () => {
-    return `dynamic_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return userManager.generateDynamicSessionId()
   }
 
   // 生成动态导师
