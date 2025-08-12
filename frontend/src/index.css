@@ -2,6 +2,9 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+/* 移动端专用样式 */
+@import './styles/mobile.css';
+
 /* 全局样式 */
 * {
   box-sizing: border-box;

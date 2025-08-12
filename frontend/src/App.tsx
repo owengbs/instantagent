@@ -13,6 +13,7 @@ import { MentorManagement } from './components/MentorManagement'
 import DebugMentorTest from './components/DebugMentorTest'
 import MultiUserTestPage from './components/MultiUserTestPage'
 import UserManagementPanel from './components/UserManagementPanel'
+import PWAInstaller from './components/PWAInstaller'
 
 import { ChatProvider, useChat } from './contexts/ChatContext'
 
@@ -158,6 +159,9 @@ function App() {
             <Route path="/user-management" element={<UserManagementPanel />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          
+          {/* PWA安装器 */}
+          <PWAInstaller />
         </div>
       </ChatProvider>
     </Router>

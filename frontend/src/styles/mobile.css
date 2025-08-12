@@ -1,0 +1,409 @@
+/**
+ * 移动端专用样式
+ * 包含触摸优化、安全区域适配、性能优化等
+ */
+
+/* 安全区域变量定义 */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  
+  /* 移动端专用颜色变量 */
+  --mobile-primary: #3B82F6;
+  --mobile-primary-dark: #2563EB;
+  --mobile-surface: #FFFFFF;
+  --mobile-surface-dark: #F8FAFC;
+  --mobile-text: #1F2937;
+  --mobile-text-secondary: #6B7280;
+  --mobile-border: #E5E7EB;
+  --mobile-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  
+  /* 移动端专用尺寸 */
+  --mobile-header-height: 60px;
+  --mobile-footer-height: 80px;
+  --mobile-padding: 16px;
+  --mobile-touch-target: 44px;
+  --mobile-border-radius: 12px;
+}
+
+/* 移动端基础重置 */
+@media (max-width: 768px) {
+  * {
+    /* 优化触摸滚动 */
+    -webkit-overflow-scrolling: touch;
+    /* 禁用文本选择（除了输入框） */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    /* 禁用点击高亮 */
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* 输入框允许文本选择 */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+  
+  /* 防止缩放 */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+  
+  /* 移动端body适配 */
+  body {
+    /* 禁用弹性滚动 */
+    overscroll-behavior: none;
+    /* 优化字体渲染 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* 安全区域适配 */
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
+    padding-left: var(--safe-area-inset-left);
+    padding-right: var(--safe-area-inset-right);
+  }
+}
+
+/* 移动端触摸优化 */
+.mobile-touch-target {
+  min-height: var(--mobile-touch-target);
+  min-width: var(--mobile-touch-target);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 移动端按钮样式 */
+.mobile-button {
+  @apply bg-blue-500 text-white font-medium py-3 px-6 rounded-lg shadow-lg;
+  min-height: var(--mobile-touch-target);
+  touch-action: manipulation;
+  transition: all 0.2s ease;
+}
+
+.mobile-button:active {
+  transform: scale(0.98);
+  @apply bg-blue-600;
+}
+
+.mobile-button:disabled {
+  @apply bg-gray-300 text-gray-500;
+  transform: none;
+}
+
+/* 移动端卡片样式 */
+.mobile-card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-200;
+  padding: var(--mobile-padding);
+  margin: 8px;
+}
+
+/* 移动端输入框样式 */
+.mobile-input {
+  @apply w-full px-4 py-3 border border-gray-300 rounded-lg;
+  min-height: var(--mobile-touch-target);
+  font-size: 16px; /* 防止iOS缩放 */
+  background-color: var(--mobile-surface);
+}
+
+.mobile-input:focus {
+  @apply outline-none ring-2 ring-blue-500 border-blue-500;
+}
+
+/* 移动端导航适配 */
+.mobile-nav {
+  position: sticky;
+  top: var(--safe-area-inset-top);
+  z-index: 50;
+  background-color: var(--mobile-surface);
+  height: var(--mobile-header-height);
+  border-bottom: 1px solid var(--mobile-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 移动端内容区域 */
+.mobile-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--mobile-padding);
+  padding-bottom: calc(var(--mobile-padding) + var(--safe-area-inset-bottom));
+}
+
+/* 移动端底部安全区域 */
+.mobile-bottom-safe {
+  padding-bottom: calc(var(--mobile-padding) + var(--safe-area-inset-bottom));
+}
+
+/* 移动端modal适配 */
+.mobile-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.mobile-modal-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--mobile-surface);
+  border-radius: var(--mobile-border-radius) var(--mobile-border-radius) 0 0;
+  padding: var(--mobile-padding);
+  padding-bottom: calc(var(--mobile-padding) + var(--safe-area-inset-bottom));
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 移动端手势指示器 */
+.mobile-swipe-indicator {
+  width: 36px;
+  height: 4px;
+  background-color: var(--mobile-border);
+  border-radius: 2px;
+  margin: 8px auto;
+}
+
+/* 移动端列表优化 */
+.mobile-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mobile-list-item {
+  @apply border-b border-gray-100;
+  min-height: var(--mobile-touch-target);
+  display: flex;
+  align-items: center;
+  padding: 12px var(--mobile-padding);
+  touch-action: manipulation;
+}
+
+.mobile-list-item:active {
+  background-color: var(--mobile-surface-dark);
+}
+
+.mobile-list-item:last-child {
+  border-bottom: none;
+}
+
+/* 移动端语音按钮特殊样式 */
+.mobile-voice-button {
+  @apply bg-red-500 text-white rounded-full shadow-lg;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  transition: all 0.2s ease;
+}
+
+.mobile-voice-button:active {
+  transform: scale(0.95);
+  @apply bg-red-600;
+}
+
+.mobile-voice-button.recording {
+  @apply bg-green-500;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 移动端聊天气泡 */
+.mobile-chat-bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  margin: 4px 0;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+.mobile-chat-bubble.user {
+  @apply bg-blue-500 text-white ml-auto;
+  border-bottom-right-radius: 6px;
+}
+
+.mobile-chat-bubble.assistant {
+  @apply bg-gray-100 text-gray-900;
+  border-bottom-left-radius: 6px;
+}
+
+/* 移动端头像适配 */
+.mobile-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mobile-avatar-large {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 移动端网格布局 */
+.mobile-grid {
+  display: grid;
+  gap: 12px;
+  padding: var(--mobile-padding);
+}
+
+.mobile-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.mobile-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 480px) {
+  .mobile-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 移动端加载状态 */
+.mobile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-height: 200px;
+}
+
+.mobile-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--mobile-border);
+  border-top-color: var(--mobile-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 移动端空状态 */
+.mobile-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  min-height: 200px;
+}
+
+.mobile-empty-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--mobile-text-secondary);
+  margin-bottom: 1rem;
+}
+
+/* 移动端通知样式 */
+.mobile-notification {
+  position: fixed;
+  top: calc(var(--safe-area-inset-top) + 16px);
+  left: 16px;
+  right: 16px;
+  z-index: 1000;
+  @apply bg-white border border-gray-200 rounded-lg shadow-lg;
+  padding: 16px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 移动端底部导航 */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--mobile-surface);
+  border-top: 1px solid var(--mobile-border);
+  padding: 8px 0;
+  padding-bottom: calc(8px + var(--safe-area-inset-bottom));
+  z-index: 50;
+}
+
+/* 横屏适配 */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --mobile-header-height: 50px;
+    --mobile-padding: 12px;
+  }
+  
+  .mobile-modal-content {
+    max-height: 80vh;
+  }
+}
+
+/* 高分辨率屏幕优化 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .mobile-icon {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mobile-surface: #1F2937;
+    --mobile-surface-dark: #111827;
+    --mobile-text: #F9FAFB;
+    --mobile-text-secondary: #9CA3AF;
+    --mobile-border: #374151;
+  }
+  
+  .mobile-card {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  .mobile-input {
+    @apply bg-gray-800 border-gray-600 text-white;
+  }
+  
+  .mobile-chat-bubble.assistant {
+    @apply bg-gray-700 text-white;
+  }
+}
