@@ -35,7 +35,7 @@ export const API_CONFIG = {
   // HTTP API地址
   getHttpBaseUrl(): string {
     if (process.env.NODE_ENV === 'development') {
-      return config.HTTP_BASE_URL
+      return config.HTTP_BASE_URL + '/api'
     }
     // 生产环境使用相对路径
     return '/api'
