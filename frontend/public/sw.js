@@ -3,17 +3,35 @@
  * 提供离线缓存、后台同步等功能
  */
 
-const CACHE_NAME = 'roundtable-chat-v1.0.0'
-const STATIC_CACHE_NAME = 'roundtable-static-v1.0.0'
-const DYNAMIC_CACHE_NAME = 'roundtable-dynamic-v1.0.0'
+const CACHE_NAME = 'roundtable-chat-v1.2.0'
+const STATIC_CACHE_NAME = 'roundtable-static-v1.2.0'
+const DYNAMIC_CACHE_NAME = 'roundtable-dynamic-v1.2.0'
+const AUDIO_CACHE_NAME = 'roundtable-audio-v1.0.0'
 
 // 需要缓存的静态资源
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/icons/icon-16x16.png',
+  '/icons/icon-32x32.png',
+  '/icons/icon-72x72.png',
+  '/icons/icon-96x96.png',
+  '/icons/icon-128x128.png',
+  '/icons/icon-144x144.png',
+  '/icons/icon-152x152.png',
+  '/icons/icon-180x180.png',
   '/icons/icon-192x192.png',
+  '/icons/icon-384x384.png',
   '/icons/icon-512x512.png'
+]
+
+// 需要预缓存的关键路径
+const CRITICAL_RESOURCES = [
+  '/src/main.tsx',
+  '/src/App.tsx',
+  '/src/index.css',
+  '/src/styles/mobile.css'
 ]
 
 // 需要缓存的API路径模式
@@ -28,8 +46,29 @@ const EXCLUDE_PATTERNS = [
   /^.*\/api\/realtime\/.*/,  // WebSocket不缓存
   /^.*\/realtime\/.*/,       // WebSocket不缓存
   /^.*\/api\/test\/.*/,      // 测试API不缓存
-  /^.*\/api\/meeting-summary\/generate.*/ // 会议总结生成不缓存
+  /^.*\/api\/meeting-summary\/generate.*/, // 会议总结生成不缓存
+  /^.*\/api\/tts\/.*/,       // TTS接口不缓存（音频流）
+  /^.*ws:\/\/.*/,           // WebSocket不缓存
+  /^.*wss:\/\/.*/           // 安全WebSocket不缓存
 ]
+
+// 音频缓存模式
+const AUDIO_CACHE_PATTERNS = [
+  /.*\.mp3$/,
+  /.*\.wav$/,
+  /.*\.ogg$/,
+  /.*\.m4a$/,
+  /.*\.aac$/
+]
+
+// 移动端优化配置
+const MOBILE_CONFIG = {
+  maxCacheSize: 50 * 1024 * 1024, // 50MB
+  maxAudioCacheSize: 20 * 1024 * 1024, // 20MB
+  cacheTimeout: 24 * 60 * 60 * 1000, // 24小时
+  networkTimeout: 5000, // 5秒网络超时
+  retryAttempts: 3
+}
 
 /**
  * Service Worker安装事件
@@ -38,18 +77,38 @@ self.addEventListener('install', event => {
   console.log('📦 Service Worker installing...')
   
   event.waitUntil(
-    caches.open(STATIC_CACHE_NAME)
-      .then(cache => {
-        console.log('📥 Caching static assets...')
-        return cache.addAll(STATIC_ASSETS)
-      })
-      .then(() => {
-        console.log('✅ Static assets cached successfully')
-        return self.skipWaiting()
-      })
-      .catch(error => {
-        console.error('❌ Failed to cache static assets:', error)
-      })
+    Promise.all([
+      // 缓存静态资源
+      caches.open(STATIC_CACHE_NAME)
+        .then(cache => {
+          console.log('📥 Caching static assets...')
+          return cache.addAll(STATIC_ASSETS)
+        }),
+      
+      // 预缓存关键资源
+      caches.open(DYNAMIC_CACHE_NAME)
+        .then(cache => {
+          console.log('📥 Pre-caching critical resources...')
+          return cache.addAll(CRITICAL_RESOURCES.map(url => new Request(url, { cache: 'reload' })))
+        })
+        .catch(() => {
+          // 关键资源缓存失败不阻止安装
+          console.warn('⚠️ Failed to pre-cache some critical resources')
+        }),
+      
+      // 初始化音频缓存
+      caches.open(AUDIO_CACHE_NAME)
+        .then(() => {
+          console.log('🎵 Audio cache initialized')
+        })
+    ])
+    .then(() => {
+      console.log('✅ Service Worker installed successfully')
+      return self.skipWaiting()
+    })
+    .catch(error => {
+      console.error('❌ Failed to install Service Worker:', error)
+    })
   )
 })
 
@@ -60,24 +119,34 @@ self.addEventListener('activate', event => {
   console.log('🚀 Service Worker activating...')
   
   event.waitUntil(
-    caches.keys()
-      .then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            // 清理旧版本缓存
-            if (cacheName !== STATIC_CACHE_NAME && 
-                cacheName !== DYNAMIC_CACHE_NAME &&
-                cacheName !== CACHE_NAME) {
-              console.log('🗑️ Deleting old cache:', cacheName)
-              return caches.delete(cacheName)
-            }
-          })
-        )
-      })
-      .then(() => {
-        console.log('✅ Service Worker activated')
-        return self.clients.claim()
-      })
+    Promise.all([
+      // 清理旧缓存
+      caches.keys()
+        .then(cacheNames => {
+          return Promise.all(
+            cacheNames.map(cacheName => {
+              // 清理旧版本缓存
+              if (cacheName !== STATIC_CACHE_NAME && 
+                  cacheName !== DYNAMIC_CACHE_NAME &&
+                  cacheName !== AUDIO_CACHE_NAME &&
+                  cacheName !== CACHE_NAME) {
+                console.log('🗑️ Deleting old cache:', cacheName)
+                return caches.delete(cacheName)
+              }
+            })
+          )
+        }),
+      
+      // 清理过期缓存
+      cleanExpiredCache(),
+      
+      // 优化缓存大小
+      optimizeCacheSize()
+    ])
+    .then(() => {
+      console.log('✅ Service Worker activated')
+      return self.clients.claim()
+    })
   )
 })
 
@@ -329,5 +398,238 @@ self.addEventListener('message', event => {
     })
   }
 })
+
+/**
+ * 清理过期缓存
+ */
+async function cleanExpiredCache() {
+  try {
+    const cacheNames = [DYNAMIC_CACHE_NAME, AUDIO_CACHE_NAME];
+    
+    for (const cacheName of cacheNames) {
+      const cache = await caches.open(cacheName);
+      const keys = await cache.keys();
+      
+      for (const request of keys) {
+        const response = await cache.match(request);
+        if (response) {
+          const cacheTime = response.headers.get('sw-cache-time');
+          if (cacheTime) {
+            const age = Date.now() - parseInt(cacheTime);
+            if (age > MOBILE_CONFIG.cacheTimeout) {
+              console.log('🗑️ Deleting expired cache:', request.url);
+              await cache.delete(request);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Failed to clean expired cache:', error);
+  }
+}
+
+/**
+ * 优化缓存大小
+ */
+async function optimizeCacheSize() {
+  try {
+    // 检查动态缓存大小
+    await limitCacheSize(DYNAMIC_CACHE_NAME, MOBILE_CONFIG.maxCacheSize);
+    
+    // 检查音频缓存大小
+    await limitCacheSize(AUDIO_CACHE_NAME, MOBILE_CONFIG.maxAudioCacheSize);
+  } catch (error) {
+    console.error('❌ Failed to optimize cache size:', error);
+  }
+}
+
+/**
+ * 限制缓存大小
+ */
+async function limitCacheSize(cacheName, maxSize) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  
+  let totalSize = 0;
+  const cacheEntries = [];
+  
+  // 计算总大小并收集条目信息
+  for (const request of keys) {
+    const response = await cache.match(request);
+    if (response) {
+      const size = parseInt(response.headers.get('content-length') || '0');
+      const cacheTime = parseInt(response.headers.get('sw-cache-time') || Date.now().toString());
+      
+      cacheEntries.push({
+        request,
+        response,
+        size,
+        cacheTime
+      });
+      
+      totalSize += size;
+    }
+  }
+  
+  // 如果超出限制，删除最旧的条目
+  if (totalSize > maxSize) {
+    cacheEntries.sort((a, b) => a.cacheTime - b.cacheTime);
+    
+    while (totalSize > maxSize && cacheEntries.length > 0) {
+      const oldest = cacheEntries.shift();
+      if (oldest) {
+        await cache.delete(oldest.request);
+        totalSize -= oldest.size;
+        console.log('🗑️ Deleted old cache entry:', oldest.request.url);
+      }
+    }
+  }
+}
+
+/**
+ * 带超时的网络请求
+ */
+async function fetchWithTimeout(request, timeout = MOBILE_CONFIG.networkTimeout) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(request, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+/**
+ * 智能缓存策略 - 根据网络状况和设备性能调整
+ */
+async function intelligentCacheStrategy(request, cacheName) {
+  // 检查网络连接
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const isSlowConnection = connection && (
+    connection.effectiveType === 'slow-2g' ||
+    connection.effectiveType === '2g' ||
+    connection.saveData
+  );
+  
+  if (isSlowConnection) {
+    // 慢网络：优先使用缓存
+    return await cacheFirst(request, cacheName);
+  } else {
+    // 快网络：优先使用网络
+    return await networkFirst(request, cacheName);
+  }
+}
+
+/**
+ * 增强的缓存优先策略
+ */
+async function cacheFirstEnhanced(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cachedResponse = await cache.match(request);
+  
+  if (cachedResponse) {
+    console.log('📋 Cache hit:', request.url);
+    
+    // 后台更新缓存
+    fetchWithTimeout(request.clone())
+      .then(response => {
+        if (response.ok) {
+          const responseClone = response.clone();
+          responseClone.headers.set('sw-cache-time', Date.now().toString());
+          cache.put(request, responseClone);
+        }
+      })
+      .catch(() => {
+        // 静默失败，继续使用缓存
+      });
+    
+    return cachedResponse;
+  }
+  
+  // 缓存未命中，从网络获取
+  console.log('🌐 Cache miss, fetching from network:', request.url);
+  const response = await fetchWithTimeout(request);
+  
+  if (response.ok) {
+    const responseClone = response.clone();
+    responseClone.headers.set('sw-cache-time', Date.now().toString());
+    await cache.put(request, responseClone);
+  }
+  
+  return response;
+}
+
+/**
+ * 增强的网络优先策略
+ */
+async function networkFirstEnhanced(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  
+  try {
+    console.log('🌐 Network first:', request.url);
+    const response = await fetchWithTimeout(request);
+    
+    if (response.ok) {
+      const responseClone = response.clone();
+      responseClone.headers.set('sw-cache-time', Date.now().toString());
+      await cache.put(request, responseClone);
+    }
+    
+    return response;
+  } catch (error) {
+    console.log('📋 Network failed, trying cache:', request.url);
+    const cachedResponse = await cache.match(request);
+    
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * 预加载关键资源
+ */
+async function preloadCriticalResources() {
+  try {
+    const cache = await caches.open(DYNAMIC_CACHE_NAME);
+    
+    const criticalUrls = [
+      '/api/mentors',
+      '/api/users/stats'
+    ];
+    
+    for (const url of criticalUrls) {
+      try {
+        const response = await fetchWithTimeout(new Request(url));
+        if (response.ok) {
+          const responseClone = response.clone();
+          responseClone.headers.set('sw-cache-time', Date.now().toString());
+          await cache.put(url, responseClone);
+          console.log('📥 Preloaded:', url);
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to preload:', url);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Preload failed:', error);
+  }
+}
+
+// 在激活时预加载关键资源
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    preloadCriticalResources()
+  );
+});
 
 console.log('🔧 Service Worker script loaded')

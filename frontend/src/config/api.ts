@@ -6,9 +6,9 @@
 const DEFAULT_CONFIG = {
   // 开发环境
   development: {
-    HTTP_BASE_URL: 'http://localhost:8000',
-    WS_BASE_URL: 'ws://localhost:8000',
-    HOST: 'localhost:8000'
+    HTTP_BASE_URL: 'http://10.31.40.11:8000',
+    WS_BASE_URL: 'ws://10.31.40.11:8000',
+    HOST: '10.31.40.11:8000'
   },
   // 生产环境  
   production: {
@@ -35,7 +35,7 @@ export const API_CONFIG = {
   // HTTP API地址
   getHttpBaseUrl(): string {
     if (process.env.NODE_ENV === 'development') {
-      return config.HTTP_BASE_URL + '/api'
+      return config.HTTP_BASE_URL
     }
     // 生产环境使用相对路径
     return '/api'
