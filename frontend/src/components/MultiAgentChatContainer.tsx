@@ -379,85 +379,114 @@ ${summaryData.summary?.actionable_advice?.map((advice: string, index: number) =>
   };
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
-      {/* 动态圆桌布局头部 */}
-      <div className="flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200">
-        {/* 会议标题 */}
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
-          圆桌会议 ({selectedMentors.length + 1}人)
-        </h2>
-        
-        <div className="relative" style={{ width: '200px', height: '140px' }}>
-          {/* 用户头像 - 中央 */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-            <AgentAvatar
-              agent={agentInfo.user}
-              size="lg"
-              showName={true}
-              className="bg-white rounded-full p-1 shadow-xl"
-            />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col">
+      {/* 精美的圆桌会议头部 */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-4 py-4">
+        <div className="max-w-4xl mx-auto">
+          {/* 圆桌会议标题 */}
+          <div className="text-center mb-6">
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+              投资大师圆桌会议
+            </h1>
+            <p className="text-sm text-gray-600">
+              {topic || '智慧投资讨论'}
+            </p>
           </div>
-          
-          {/* 动态导师头像 */}
-          {renderMentorAvatars()}
-          
-          {/* 连接线 - 从用户到每位导师 */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {selectedMentors.map((mentor, index) => {
-              const mentorCount = selectedMentors.length;
-              const centerX = 100;
-              const centerY = 70;
-              let x, y;
-              
-              if (mentorCount === 1) {
-                x = centerX + 60;
-                y = centerY;
-              } else if (mentorCount === 2) {
-                x = centerX + (index === 0 ? -60 : 60);
-                y = centerY;
-              } else {
-                const radius = 70;
+
+          {/* 圆桌会议布局 - 用户居中，导师环绕 */}
+          <div className="relative flex justify-center items-center mb-6">
+            {/* 用户头像 - 中央 */}
+            <div className="relative z-10">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+                <span className="text-white font-bold text-lg sm:text-xl">您</span>
+              </div>
+              <div className="text-center mt-2">
+                <span className="text-xs text-gray-600 font-medium">主持人</span>
+              </div>
+            </div>
+
+            {/* 导师头像 - 环绕布局 */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {selectedMentors.map((mentor, index) => {
+                const mentorCount = selectedMentors.length;
+                const radius = mentorCount === 1 ? 0 : mentorCount === 2 ? 80 : 100;
                 const angle = (index * 2 * Math.PI) / mentorCount - Math.PI / 2;
-                x = centerX + radius * Math.cos(angle);
-                y = centerY + radius * Math.sin(angle);
-              }
-              
-              return (
-                <line
-                  key={mentor.id}
-                  x1={centerX} y1={centerY}  // 用户位置（中央）
-                  x2={x} y2={y}   // 导师位置
-                  stroke="#3B82F6"
-                  strokeWidth="2"
-                  strokeDasharray="8,4"
-                  opacity="0.4"
-                />
-              );
-            })}
-          </svg>
-        </div>
-        
-        {/* 导师风格标签 */}
-        <div className="flex flex-wrap justify-center gap-2 mt-4">
-          {selectedMentors.map((mentor) => (
-            <span 
-              key={mentor.id} 
-              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white shadow-sm"
-              style={{ backgroundColor: mentor.color }}
-            >
-              {mentor.name} · {mentor.investmentStyle}
-            </span>
-          ))}
+                const x = radius * Math.cos(angle);
+                const y = radius * Math.sin(angle);
+                
+                return (
+                  <div
+                    key={mentor.id}
+                    className="absolute transform -translate-x-1/2 -translate-y-1/2"
+                    style={{
+                      left: `calc(50% + ${x}px)`,
+                      top: `calc(50% + ${y}px)`
+                    }}
+                  >
+                    <div 
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-lg border-3 border-white"
+                      style={{ backgroundColor: mentor.color }}
+                    >
+                      <span className="text-white font-bold text-sm sm:text-base">
+                        {mentor.name.charAt(0)}
+                      </span>
+                    </div>
+                    <div className="text-center mt-1">
+                      <span className="text-xs text-gray-600 font-medium max-w-[60px] truncate block">
+                        {mentor.name}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 连接线 - 从用户到每位导师 */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none">
+              {selectedMentors.map((mentor, index) => {
+                const mentorCount = selectedMentors.length;
+                const radius = mentorCount === 1 ? 0 : mentorCount === 2 ? 80 : 100;
+                const angle = (index * 2 * Math.PI) / mentorCount - Math.PI / 2;
+                const x = radius * Math.cos(angle);
+                const y = radius * Math.sin(angle);
+                
+                return (
+                  <line
+                    key={mentor.id}
+                    x1="50%" y1="50%"  // 用户位置（中央）
+                    x2={`calc(50% + ${x}px)`} y2={`calc(50% + ${y}px)`}   // 导师位置
+                    stroke={mentor.color}
+                    strokeWidth="2"
+                    strokeDasharray="6,4"
+                    opacity="0.6"
+                  />
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* 导师风格标签 */}
+          <div className="flex flex-wrap justify-center gap-2">
+            {selectedMentors.map((mentor) => (
+              <span 
+                key={mentor.id} 
+                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium text-white shadow-sm"
+                style={{ backgroundColor: mentor.color }}
+              >
+                {mentor.name} · {mentor.investmentStyle}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* 消息列表 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* 消息列表 - 简化布局 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-4xl mx-auto w-full">
         {multiAgentMessages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            <div className="text-4xl mb-4">🎤</div>
-            <p className="text-lg font-medium">开始您的投资对话</p>
-            <p className="text-sm">点击麦克风按钮，与投资大师们交流</p>
+          <div className="text-center text-gray-500 py-12">
+            <div className="text-5xl mb-4">🎤</div>
+            <p className="text-lg font-medium mb-2">开始您的投资对话</p>
+            <p className="text-sm text-gray-400">点击麦克风按钮，与投资大师们交流</p>
           </div>
         ) : (
           multiAgentMessages.map((message, index) => {
@@ -484,11 +513,6 @@ ${summaryData.summary?.actionable_advice?.map((advice: string, index: number) =>
               agent = agentInfo[message.agent_id as keyof typeof agentInfo];
             }
             
-            // 调试信息
-            if (message.type !== 'user') {
-              console.log(`🎭 渲染智能体消息: ${message.agent_id || message.type} (${agent?.name}) - Order: ${message.order}`);
-            }
-            
             return (
               <MessageBubble
                 key={`${message.timestamp}-${index}`}
@@ -510,35 +534,35 @@ ${summaryData.summary?.actionable_advice?.map((advice: string, index: number) =>
           })
         )}
         
-        {/* 处理中指示器 */}
+        {/* 处理中指示器 - 美化 */}
         {isTyping && (
-          <div className="flex items-center space-x-2 text-gray-500">
+          <div className="flex items-center justify-center space-x-2 text-gray-500 py-4">
             <div className="flex space-x-1">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
             </div>
-            <span className="text-sm">投资大师们正在思考...</span>
+            <span className="text-sm font-medium">投资大师们正在思考...</span>
           </div>
         )}
         
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 结束对话按钮 */}
+      {/* 结束对话按钮 - 简化布局 */}
       {messages.length > 1 && (
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex justify-center space-x-4">
+        <div className="bg-white/80 backdrop-blur-sm border-t border-gray-200/50 px-4 py-4">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={handleEndConversation}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105"
+              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-2xl hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               <FileText className="w-5 h-5" />
               <span>生成会议纪要</span>
             </button>
             <button
               onClick={() => navigate('/')}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 transition-all duration-300"
+              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-6 py-3 bg-gray-500 text-white font-medium rounded-2xl hover:bg-gray-600 transition-all duration-300 shadow-lg"
             >
               <LogOut className="w-5 h-5" />
               <span>返回首页</span>
@@ -552,6 +576,8 @@ ${summaryData.summary?.actionable_advice?.map((advice: string, index: number) =>
         <MeetingSummaryGenerator
           sessionId={sessionId}
           topic={topic}
+          // 将当前消息传入，便于后端兜底
+          messages={messages}
           onSummaryGenerated={handleSummaryGenerated}
           onClose={() => setShowSummaryGenerator(false)}
         />

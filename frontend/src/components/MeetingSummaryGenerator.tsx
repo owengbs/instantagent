@@ -15,6 +15,8 @@ import API_CONFIG from '../config/api'
 interface MeetingSummaryGeneratorProps {
   sessionId: string
   topic?: string
+  // 新增：可选直传的会话消息，用于后端兜底
+  messages?: any[]
   onSummaryGenerated: (summary: any) => void
   onClose: () => void
 }
@@ -76,9 +78,13 @@ const MeetingSummaryGenerator: React.FC<MeetingSummaryGeneratorProps> = ({
       })
       
       // 调用后端API生成总结
-      const requestBody = {
+      const requestBody: any = {
         session_id: sessionId,
         topic: topic
+      }
+      // 如有传入消息，则一并发送，便于后端兜底
+      if (Array.isArray(messages) && messages.length > 0) {
+        requestBody.messages = messages
       }
       
       console.log('📤 发送请求体:', requestBody)
