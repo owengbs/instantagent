@@ -30,6 +30,7 @@ interface GenerationStatus {
 const MeetingSummaryGenerator: React.FC<MeetingSummaryGeneratorProps> = ({
   sessionId,
   topic,
+  messages,
   onSummaryGenerated,
   onClose
 }) => {
