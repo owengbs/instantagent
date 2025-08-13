@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import MultiAgentChatContainer from './components/MultiAgentChatContainer.tsx'
-import Header from './components/Header.tsx'
 
 import LoadingScreen from './components/LoadingScreen.tsx'
 import VoiceTest from './components/VoiceTest.tsx'
@@ -33,11 +32,7 @@ const ChatInterface: React.FC = () => {
           transition={{ duration: 0.3 }}
           className="h-screen flex flex-col"
         >
-          <Header 
-            onTestClick={() => setShowVoiceTest(false)}
-            onSettingsClick={() => console.log('设置')}
-            onInfoClick={() => console.log('关于')}
-          />
+          {/* 顶部Header移除以满足首页精简化要求 */}
           <div className="flex-1 overflow-auto bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
             <VoiceTest />
           </div>
@@ -50,11 +45,7 @@ const ChatInterface: React.FC = () => {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="h-screen flex flex-col"
         >
-          <Header 
-            onTestClick={() => setShowVoiceTest(true)}
-            onSettingsClick={() => console.log('设置')}
-            onInfoClick={() => console.log('关于')}
-          />
+          {/* 顶部Header移除以满足首页精简化要求 */}
           <div className="flex-1 overflow-hidden">
             <MultiAgentChatContainer />
           </div>
@@ -91,62 +82,7 @@ function App() {
     <Router>
       <ChatProvider>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-          {/* 导航栏 */}
-          <nav className="bg-white shadow-lg border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4">
-              <div className="flex justify-between h-16">
-                <div className="flex items-center space-x-8">
-                  <Link to="/" className="text-xl font-bold text-gray-900">
-                    投资大师圆桌会议
-                  </Link>
-                  <div className="flex space-x-4">
-                    <Link 
-                      to="/" 
-                      className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      导师选择
-                    </Link>
-                    <Link 
-                      to="/chat" 
-                      className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      圆桌对话
-                    </Link>
-                    <Link 
-                      to="/test" 
-                      className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      功能测试
-                    </Link>
-                    <Link 
-                      to="/management" 
-                      className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      导师管理
-                    </Link>
-                    <Link 
-                      to="/debug" 
-                      className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      调试
-                    </Link>
-                    <Link 
-                      to="/multi-user-test" 
-                      className="text-orange-600 hover:text-orange-900 px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      多用户测试
-                    </Link>
-                    <Link 
-                      to="/user-management" 
-                      className="text-purple-600 hover:text-purple-900 px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      用户管理
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </nav>
+          {/* 顶部导航移除，首页只保留核心入口（讨论话题/导师选择/开始对话） */}
 
           {/* 路由内容 */}
           <Routes>
