@@ -2,6 +2,26 @@
  * API配置文件 - 统一管理所有后端地址
  */
 
+// 智能检测当前环境
+const detectEnvironment = () => {
+  // 检查是否在移动设备上
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  
+  // 检查是否在本地开发环境
+  const isLocalDev = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1' ||
+                     window.location.hostname.includes('192.168.') ||
+                     window.location.hostname.includes('10.31.')
+  
+  // 检查是否在移动端访问PC端开发服务器
+  const isMobileAccessingDev = isMobile && !isLocalDev && 
+                               (window.location.hostname === '10.31.40.11' || 
+                                window.location.hostname.includes('192.168.') ||
+                                window.location.hostname.includes('10.31.'))
+  
+  return { isMobile, isLocalDev, isMobileAccessingDev }
+}
+
 // 默认后端地址配置
 const DEFAULT_CONFIG = {
   // 开发环境
@@ -18,15 +38,35 @@ const DEFAULT_CONFIG = {
   }
 }
 
-// 从环境变量获取配置，如果没有则使用默认配置
+// 从环境变量获取配置，如果没有则使用智能配置
 const getConfig = () => {
   const isDev = process.env.NODE_ENV === 'development'
+  const env = detectEnvironment()
   
-  return {
-    HTTP_BASE_URL: import.meta.env.VITE_API_BASE_URL || DEFAULT_CONFIG[isDev ? 'development' : 'production'].HTTP_BASE_URL,
-    WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL || DEFAULT_CONFIG[isDev ? 'development' : 'production'].WS_BASE_URL,
-    HOST: import.meta.env.VITE_HOST || DEFAULT_CONFIG[isDev ? 'development' : 'production'].HOST
+  // 如果环境变量已设置，直接使用
+  if (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_WS_BASE_URL) {
+    return {
+      HTTP_BASE_URL: import.meta.env.VITE_API_BASE_URL || DEFAULT_CONFIG[isDev ? 'development' : 'production'].HTTP_BASE_URL,
+      WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL || DEFAULT_CONFIG[isDev ? 'development' : 'production'].WS_BASE_URL,
+      HOST: import.meta.env.VITE_HOST || DEFAULT_CONFIG[isDev ? 'development' : 'production'].HOST
+    }
   }
+  
+  // 智能配置：移动端访问开发服务器时，使用当前域名
+  if (isDev && env.isMobileAccessingDev) {
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const currentHost = window.location.host
+    
+    return {
+      HTTP_BASE_URL: `${protocol}//${currentHost}`,
+      WS_BASE_URL: `${wsProtocol}//${currentHost}`,
+      HOST: currentHost
+    }
+  }
+  
+  // 使用默认配置
+  return DEFAULT_CONFIG[isDev ? 'development' : 'production']
 }
 
 const config = getConfig()

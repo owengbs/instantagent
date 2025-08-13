@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# 投资大师圆桌会议 - ngrok公网访问启动脚本（含WebSocket修复）
+# 投资大师圆桌会议 - 高级ngrok公网访问启动脚本
+# 支持ngrok 2.x和3.x版本，自动配置文件选择
 
-echo "🌐 启动投资大师圆桌会议 - ngrok公网访问模式..."
-echo "=============================================="
+echo "🌐 启动投资大师圆桌会议 - 高级ngrok公网访问模式..."
+echo "=================================================="
 
 # 检查ngrok是否安装
 if ! command -v ngrok &> /dev/null; then
@@ -18,6 +19,49 @@ fi
 # 检测ngrok版本
 NGROK_VERSION=$(ngrok version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 echo "🔍 检测到ngrok版本: $NGROK_VERSION"
+
+# 根据版本选择配置和启动方式
+if [[ "$NGROK_VERSION" == 3.* ]]; then
+    echo "📋 使用ngrok 3.x配置"
+    NGROK_CONFIG="ngrok3.yml"
+    # ngrok 3.x 使用命令行启动，配置文件只用于基本设置
+    USE_CONFIG=true
+    NGROK_CMD="ngrok http 5173 --config $NGROK_CONFIG --log=stdout"
+elif [[ "$NGROK_VERSION" == 2.* ]]; then
+    echo "📋 使用ngrok 2.x配置"
+    NGROK_CONFIG="ngrok.yml"
+    NGROK_CMD="ngrok start --config $NGROK_CONFIG frontend"
+    USE_CONFIG=true
+else
+    echo "⚠️  未知的ngrok版本，使用默认配置"
+    NGROK_CONFIG=""
+    NGROK_CMD="ngrok http 5173 --log=stdout"
+    USE_CONFIG=false
+fi
+
+# 检查ngrok配置文件
+if [ ! -z "$NGROK_CONFIG" ] && [ ! -f "$NGROK_CONFIG" ]; then
+    echo "⚠️  ngrok配置文件不存在，将使用默认配置"
+    echo "💡 建议创建 $NGROK_CONFIG 文件以获得更好的性能"
+    USE_CONFIG=false
+    if [[ "$NGROK_VERSION" == 3.* ]]; then
+        NGROK_CMD="ngrok http 5173 --log=stdout"
+    else
+        NGROK_CMD="ngrok http 5173 --log=stdout"
+    fi
+elif [ ! -z "$NGROK_CONFIG" ]; then
+    echo "✅ 发现ngrok配置文件: $NGROK_CONFIG"
+    # 验证配置文件
+    if ngrok config check --config $NGROK_CONFIG 2>/dev/null; then
+        echo "✅ 配置文件验证通过"
+    else
+        echo "⚠️  配置文件验证失败，使用默认配置"
+        USE_CONFIG=false
+        NGROK_CMD="ngrok http 5173 --log=stdout"
+    fi
+else
+    USE_CONFIG=false
+fi
 
 # 检查端口是否被占用
 check_port() {
@@ -98,36 +142,36 @@ else
     exit 1
 fi
 
-# 启动ngrok隧道 - 前端
+# 启动ngrok隧道
 echo "🌐 启动ngrok隧道..."
 cd ..
 
-# 根据ngrok版本选择启动命令
-if [[ "$NGROK_VERSION" == 3.* ]]; then
-    echo "📋 使用ngrok 3.x启动命令"
-    # 检查是否有配置文件
-    if [ -f "ngrok3.yml" ]; then
-        echo "✅ 使用ngrok3.yml配置文件"
-        ngrok http 5173 --config ngrok3.yml --log=stdout &
-    else
-        echo "📋 使用默认配置启动ngrok 3.x"
-        ngrok http 5173 --log=stdout &
-    fi
+if [ "$USE_CONFIG" = true ]; then
+    echo "📋 使用配置文件启动ngrok: $NGROK_CONFIG"
+    echo "🚀 执行命令: $NGROK_CMD"
+    eval $NGROK_CMD &
+    NGROK_PID=$!
 else
-    echo "📋 使用ngrok 2.x启动命令"
+    echo "📋 使用默认配置启动ngrok..."
     ngrok http 5173 --log=stdout &
+    NGROK_PID=$!
 fi
 
-NGROK_PID=$!
-
 # 等待ngrok启动
-sleep 3
+sleep 5
 
 # 获取ngrok公网地址
 echo "🔍 获取ngrok地址..."
 NGROK_URL=""
-for i in {1..15}; do
-    NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o '"public_url":"[^"]*' | grep https | cut -d'"' -f4 | head -1)
+for i in {1..20}; do
+    if [ "$USE_CONFIG" = true ]; then
+        # 使用配置文件时，尝试获取前端隧道地址
+        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o '"public_url":"[^"]*' | grep https | cut -d'"' -f4 | head -1)
+    else
+        # 使用默认配置时
+        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o '"public_url":"[^"]*' | grep https | cut -d'"' -f4 | head -1)
+    fi
+    
     if [ ! -z "$NGROK_URL" ]; then
         break
     fi
@@ -143,15 +187,11 @@ if [ -z "$NGROK_URL" ]; then
     kill $NGROK_PID 2>/dev/null || true
     sleep 2
     
-    if [[ "$NGROK_VERSION" == 3.* ]]; then
-        echo "🔄 重新启动ngrok 3.x..."
-        if [ -f "ngrok3.yml" ]; then
-            ngrok http 5173 --config ngrok3.yml --log=stdout &
-        else
-            ngrok http 5173 --log=stdout &
-        fi
+    if [ "$USE_CONFIG" = true ]; then
+        echo "🔄 重新启动ngrok（使用配置文件）..."
+        eval $NGROK_CMD &
     else
-        echo "🔄 重新启动ngrok 2.x..."
+        echo "🔄 重新启动ngrok（使用默认配置）..."
         ngrok http 5173 --log=stdout &
     fi
     
@@ -159,8 +199,13 @@ if [ -z "$NGROK_URL" ]; then
     sleep 5
     
     # 再次尝试获取地址
-    for i in {1..10}; do
-        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o '"public_url":"[^"]*' | grep https | cut -d'"' -f4 | head -1)
+    for i in {1..15}; do
+        if [ "$USE_CONFIG" = true ]; then
+            NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o '"public_url":"[^"]*' | grep https | cut -d'"' -f4 | head -1)
+        else
+            NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o '"public_url":"[^"]*' | grep https | cut -d'"' -f4 | head -1)
+        fi
+        
         if [ ! -z "$NGROK_URL" ]; then
             break
         fi
@@ -228,11 +273,22 @@ EOF
     echo "   • ngrok免费版有连接数限制"
     echo "   • 每次重启地址会变化"
     echo "   • 适合开发测试使用"
-    echo "   • 当前ngrok版本: $NGROK_VERSION"
     echo ""
     echo "🧪 故障排除："
     echo "   如果仍有问题，访问: $NGROK_URL/websocket-test"
     echo "   进行连接诊断测试"
+    echo ""
+    echo "🔧 高级功能："
+    if [ "$USE_CONFIG" = true ]; then
+        echo "   • 使用配置文件优化性能 ($NGROK_CONFIG)"
+        echo "   • 支持多隧道配置"
+        echo "   • WebSocket连接优化"
+        echo "   • ngrok版本: $NGROK_VERSION"
+    else
+        echo "   • 建议创建 ngrok.yml 或 ngrok3.yml 配置文件"
+        echo "   • 可获得更好的性能和稳定性"
+        echo "   • 当前ngrok版本: $NGROK_VERSION"
+    fi
     echo ""
 else
     echo "❌ 最终无法获取ngrok地址"
@@ -240,7 +296,8 @@ else
     echo "   1. ngrok是否正常启动"
     echo "   2. 网络连接是否正常"
     echo "   3. 访问 http://localhost:4040 查看详细状态"
-    echo "   4. ngrok版本兼容性: $NGROK_VERSION"
+    echo "   4. 如果使用配置文件，检查配置是否正确"
+    echo "   5. ngrok版本兼容性: $NGROK_VERSION"
 fi
 
 echo "🛑 按 Ctrl+C 停止所有服务"

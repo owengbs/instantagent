@@ -78,17 +78,17 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
       setSessionId(routeState.sessionId || '');
       setTopic(routeState.topic || '');
       
-      console.log('使用动态导师:', mentors.length, '位导师');
+      console.log('🖥️ PC端使用动态导师:', mentors.length, '位导师');
       setIsValidAccess(true);
     } else {
       // 从本地存储加载选中的导师
       const savedMentors = localStorage.getItem('selectedMentors');
-      console.log('🔍 加载本地存储的导师数据');
+      console.log('🖥️ PC端加载本地存储的导师数据');
       
       if (savedMentors) {
         try {
           const mentors: Mentor[] = JSON.parse(savedMentors);
-          console.log('📋 解析后的导师数据:', mentors.map(m => ({ id: m.id, name: m.name })));
+          console.log('🖥️ PC端解析后的导师数据:', mentors.map(m => ({ id: m.id, name: m.name })));
           
           if (mentors.length > 0) {
             setSelectedMentors(mentors);
@@ -245,13 +245,35 @@ ${summaryData.summary?.actionable_advice?.map((advice: string, index: number) =>
     return acc;
   }, {} as Record<string, number>));
 
+  // 添加详细的调试信息
+  console.log('🖥️ PC端渲染检查:', {
+    isValidAccess,
+    selectedMentorsLength: selectedMentors.length,
+    selectedMentors: selectedMentors.map(m => ({ id: m.id, name: m.name }))
+  })
+
   // 如果访问无效，显示加载状态或重定向
-  if (!isValidAccess || selectedMentors.length === 0) {
+  if (!isValidAccess) {
+    console.warn('🖥️ PC端访问状态无效，显示加载页面')
     return (
       <div className={`flex flex-col h-full items-center justify-center ${className}`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">正在验证访问权限...</p>
+          <p className="mt-2 text-xs text-gray-400">Debug: isValidAccess = {String(isValidAccess)}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedMentors.length === 0) {
+    console.warn('🖥️ PC端导师列表为空，显示加载页面')
+    return (
+      <div className={`flex flex-col h-full items-center justify-center ${className}`}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">正在加载导师信息...</p>
+          <p className="mt-2 text-xs text-gray-400">Debug: selectedMentors.length = {selectedMentors.length}</p>
         </div>
       </div>
     );

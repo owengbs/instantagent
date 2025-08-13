@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# 投资大师圆桌会议 - 移动端访问启动脚本
+# 投资大师圆桌会议 - 移动端访问启动脚本（含WebSocket修复）
 
 echo "🚀 启动投资大师圆桌会议移动版..."
+echo "=================================="
 
 # 获取本机IP地址
 IP_ADDRESS=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | head -1 | awk '{print $2}')
@@ -48,14 +49,45 @@ else
     exit 1
 fi
 
+# 配置前端环境变量（解决WebSocket连接问题）
+echo "🔧 配置前端WebSocket连接..."
+cd ../frontend
+
+# 创建环境变量配置文件
+cat > .env.development << EOF
+# 移动端WebSocket连接配置
+# 自动生成于 $(date)
+
+# API基础URL（HTTP）
+VITE_API_BASE_URL=http://$IP_ADDRESS:8000
+
+# WebSocket基础URL  
+VITE_WS_BASE_URL=ws://$IP_ADDRESS:8000
+
+# 主机地址
+VITE_HOST=$IP_ADDRESS:8000
+
+# 注意：此文件由脚本自动生成，用于解决手机端WebSocket连接错误
+EOF
+
+echo "✅ 环境变量文件已创建: .env.development"
+echo "   HTTP API: http://$IP_ADDRESS:8000"
+echo "   WebSocket: ws://$IP_ADDRESS:8000"
+
 # 启动前端服务
 echo "🎨 启动前端服务..."
-cd ../frontend
-npm run dev &
+npm run dev -- --host 0.0.0.0 &
 FRONTEND_PID=$!
 
 # 等待前端启动
 sleep 8
+
+# 检查前端是否启动成功
+if curl -s http://localhost:5173 > /dev/null; then
+    echo "✅ 前端服务启动成功"
+else
+    echo "⚠️  前端服务可能还在启动中，请稍等..."
+fi
 
 # 显示访问信息
 echo ""
@@ -70,11 +102,20 @@ echo ""
 echo "🔧 后端API地址："
 echo "   http://$IP_ADDRESS:8000"
 echo ""
+echo "🔌 WebSocket配置："
+echo "   已自动配置为: ws://$IP_ADDRESS:8000"
+echo "   解决手机端连接错误问题"
+echo ""
 echo "📋 使用说明："
 echo "1. 确保手机和电脑连接同一个WiFi网络"
 echo "2. 在手机浏览器中访问上述地址"
 echo "3. 首次访问可能需要允许麦克风权限"
 echo "4. 支持添加到主屏幕作为PWA应用"
+echo "5. WebSocket连接已自动修复，无需额外配置"
+echo ""
+echo "🧪 故障排除："
+echo "   如果仍有问题，访问: http://$IP_ADDRESS:5173/websocket-test"
+echo "   进行连接诊断测试"
 echo ""
 echo "🛑 按 Ctrl+C 停止所有服务"
 

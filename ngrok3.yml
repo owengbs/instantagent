@@ -1,0 +1,22 @@
+# ngrok 3.x 配置文件
+# 注意：ngrok 3.x 使用完全不同的配置格式
+
+version: "3"
+authtoken: # 请在这里填入你的ngrok authtoken
+
+# 定义隧道
+tunnels:
+  # 前端服务隧道
+  frontend:
+    addr: 5173
+    proto: http
+    inspect: true
+    # ngrok 3.x 自动支持HTTPS和WebSocket
+    # 无需手动配置schemes字段
+  
+  # 后端服务隧道（可选）
+  backend:
+    addr: 8000
+    proto: http
+    inspect: false
+    # ngrok 3.x 自动支持HTTPS和WebSocket
