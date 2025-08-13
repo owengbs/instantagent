@@ -129,7 +129,16 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
     if (selectedMentorIds.length > 0) {
       const selectedMentors = generatedMentors.filter(mentor => selectedMentorIds.includes(mentor.id))
       console.log('✅ 最终选择的导师:', selectedMentors.map(m => ({ id: m.id, name: m.name })))
-      
+      // 将动态导师选择结果持久化，避免路由状态在某些环境下丢失时回退到默认导师
+      try {
+        localStorage.setItem('selectedMentors', JSON.stringify(selectedMentors))
+        localStorage.setItem('dynamicSessionId', sessionId)
+        localStorage.setItem('dynamicTopic', topic)
+        localStorage.setItem('isDynamic', 'true')
+      } catch (e) {
+        console.warn('localStorage 持久化动态导师失败（不影响继续导航）:', e)
+      }
+
       onMentorsGenerated(selectedMentors, topic, sessionId)
       navigate('/chat', { 
         state: { 

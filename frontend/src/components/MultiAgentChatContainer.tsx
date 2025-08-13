@@ -83,6 +83,7 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
     } else {
       // 从本地存储加载选中的导师
       const savedMentors = localStorage.getItem('selectedMentors');
+      const isDynamicFlag = localStorage.getItem('isDynamic') === 'true'
       console.log('🖥️ PC端加载本地存储的导师数据');
       
       if (savedMentors) {
@@ -135,7 +136,7 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
               const timestamp = Date.now();
               const suffix = Math.random().toString(36).slice(2, 10);
               const defaultSessionId = `default_${timestamp}_msg_${timestamp}_${suffix}`;
-              const defaultTopic = '投资圆桌讨论';
+              const defaultTopic = dynamicTopic || '投资圆桌讨论';
               
               localStorage.setItem('dynamicSessionId', defaultSessionId);
               localStorage.setItem('dynamicTopic', defaultTopic);
