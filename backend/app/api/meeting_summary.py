@@ -24,6 +24,8 @@ class GenerateSummaryRequest(BaseModel):
     session_id: str
     topic: Optional[str] = None
     custom_instructions: Optional[str] = None
+    # 前端可选直传消息，作为兜底策略，避免因session_id不匹配导致404
+    messages: Optional[List[Dict[str, Any]]] = None
 
 class SummaryResponse(BaseModel):
     """总结响应"""
@@ -51,6 +53,10 @@ async def generate_meeting_summary(request: GenerateSummaryRequest):
         
         # 1. 获取会话消息历史
         messages = get_session_messages(request.session_id)
+        # 兜底：如果根据session_id无法获取，但请求体携带了消息，则直接使用请求体中的消息
+        if not messages and request.messages:
+            logger.warning("⚠️ 会话消息未通过session_id匹配，使用前端直传的messages作为兜底")
+            messages = request.messages
         if not messages:
             logger.error(f"❌ 未找到会话消息历史: session_id={request.session_id}")
             logger.error(f"💡 可用的会话ID: {list(agent_manager.conversation_sessions.keys())}")
