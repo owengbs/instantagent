@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>检查localStorage会话信息</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .key {
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .value {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .empty {
+            color: #dc2626;
+            font-style: italic;
+        }
+        .success {
+            color: #059669;
+        }
+        .warning {
+            color: #d97706;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .clear-btn {
+            background: #dc2626;
+        }
+        .clear-btn:hover {
+            background: #b91c1c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 localStorage会话信息检查</h1>
+        
+        <div class="section">
+            <h2>📋 当前会话信息</h2>
+            <div id="sessionInfo"></div>
+        </div>
+        
+        <div class="section">
+            <h2>🔧 操作</h2>
+            <button onclick="refreshInfo()">🔄 刷新信息</button>
+            <button onclick="clearSession()" class="clear-btn">🗑️ 清除会话</button>
+            <button onclick="createTestSession()">🧪 创建测试会话</button>
+        </div>
+        
+        <div class="section">
+            <h2>💡 诊断建议</h2>
+            <div id="diagnosis"></div>
+        </div>
+    </div>
+
+    <script>
+        function refreshInfo() {
+            displaySessionInfo();
+            displayDiagnosis();
+        }
+
+        function displaySessionInfo() {
+            const container = document.getElementById('sessionInfo');
+            const keys = ['dynamicSessionId', 'dynamicTopic', 'selectedMentors', 'userInfo'];
+            
+            let html = '';
+            
+            keys.forEach(key => {
+                const value = localStorage.getItem(key);
+                if (value) {
+                    try {
+                        const parsed = JSON.parse(value);
+                        html += `
+                            <div>
+                                <span class="key">${key}:</span>
+                                <div class="value">${JSON.stringify(parsed, null, 2)}</div>
+                            </div>
+                        `;
+                    } catch (e) {
+                        html += `
+                            <div>
+                                <span class="key">${key}:</span>
+                                <div class="value">${value}</div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    html += `
+                        <div>
+                            <span class="key">${key}:</span>
+                            <span class="empty">未设置</span>
+                        </div>
+                    `;
+                }
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function displayDiagnosis() {
+            const container = document.getElementById('diagnosis');
+            const sessionId = localStorage.getItem('dynamicSessionId');
+            const topic = localStorage.getItem('dynamicTopic');
+            
+            let html = '<ul>';
+            
+            if (!sessionId) {
+                html += '<li class="warning">⚠️ 缺少dynamicSessionId - 这是主要问题</li>';
+                html += '<li>💡 建议：重新创建动态导师会话</li>';
+            } else {
+                html += '<li class="success">✅ 找到dynamicSessionId</li>';
+                
+                // 检查格式
+                if (sessionId.includes('_msg_')) {
+                    html += '<li class="success">✅ sessionId格式正确</li>';
+                } else {
+                    html += '<li class="warning">⚠️ sessionId格式可能不正确</li>';
+                    html += '<li>💡 期望格式：{UUID}_msg_{timestamp}_{suffix}</li>';
+                }
+            }
+            
+            if (!topic) {
+                html += '<li class="warning">⚠️ 缺少dynamicTopic</li>';
+            } else {
+                html += '<li class="success">✅ 找到dynamicTopic</li>';
+            }
+            
+            html += '</ul>';
+            
+            container.innerHTML = html;
+        }
+
+        function clearSession() {
+            if (confirm('确定要清除所有会话信息吗？')) {
+                localStorage.removeItem('dynamicSessionId');
+                localStorage.removeItem('dynamicTopic');
+                localStorage.removeItem('selectedMentors');
+                alert('会话信息已清除');
+                refreshInfo();
+            }
+        }
+
+        function createTestSession() {
+            const testSessionId = `test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const testTopic = '测试投资议题';
+            
+            localStorage.setItem('dynamicSessionId', testSessionId);
+            localStorage.setItem('dynamicTopic', testTopic);
+            
+            alert('测试会话已创建');
+            refreshInfo();
+        }
+
+        // 页面加载时显示信息
+        window.onload = function() {
+            refreshInfo();
+        };
+    </script>
+</body>
+</html>

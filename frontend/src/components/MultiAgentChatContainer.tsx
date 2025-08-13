@@ -119,9 +119,31 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
             // 从localStorage获取会话信息
             const dynamicSessionId = localStorage.getItem('dynamicSessionId');
             const dynamicTopic = localStorage.getItem('dynamicTopic');
+            
+            console.log('🔍 从localStorage获取会话信息:')
+            console.log('   dynamicSessionId:', dynamicSessionId)
+            console.log('   dynamicTopic:', dynamicTopic)
+            
             if (dynamicSessionId) {
               setSessionId(dynamicSessionId);
               setTopic(dynamicTopic || '');
+              console.log('✅ 设置会话信息成功')
+            } else {
+              console.log('⚠️ 未找到dynamicSessionId，尝试生成默认sessionId')
+              
+              // 为默认导师生成默认sessionId
+              const timestamp = Date.now();
+              const suffix = Math.random().toString(36).slice(2, 10);
+              const defaultSessionId = `default_${timestamp}_msg_${timestamp}_${suffix}`;
+              const defaultTopic = '投资圆桌讨论';
+              
+              localStorage.setItem('dynamicSessionId', defaultSessionId);
+              localStorage.setItem('dynamicTopic', defaultTopic);
+              
+              setSessionId(defaultSessionId);
+              setTopic(defaultTopic);
+              
+              console.log('✅ 已生成默认sessionId:', defaultSessionId)
             }
             
             setIsValidAccess(true);
@@ -157,6 +179,19 @@ const MultiAgentChatContainer: React.FC<MultiAgentChatContainerProps> = ({ class
       alert('对话内容太少，无法生成有意义的会议纪要');
       return;
     }
+    
+    console.log('🔍 准备生成会议纪要:')
+    console.log('   sessionId:', sessionId)
+    console.log('   topic:', topic)
+    console.log('   messages.length:', messages.length)
+    console.log('   localStorage dynamicSessionId:', localStorage.getItem('dynamicSessionId'))
+    
+    if (!sessionId) {
+      console.error('❌ sessionId为空，无法生成会议纪要')
+      alert('会话ID无效，请重新开始对话')
+      return
+    }
+    
     setShowSummaryGenerator(true);
   };
 

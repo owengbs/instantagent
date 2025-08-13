@@ -137,18 +137,39 @@ class UserManager {
   }
 
   /**
-   * 生成用户专属的动态导师会话ID
+   * 生成动态导师会话ID
+   * 格式：{UUID}_msg_{timestamp}_{suffix}
+   * 与后端期望的格式保持一致
    */
   generateDynamicSessionId(): string {
     const user = this.getCurrentUser()
-    return `dynamic_${user.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    // 生成UUID格式的用户ID
+    const userId = user.id || this.generateUUID()
+    const timestamp = Date.now()
+    const suffix = Math.random().toString(36).slice(2, 10)
+    
+    // 格式：{UUID}_msg_{timestamp}_{suffix}
+    return `${userId}_msg_${timestamp}_${suffix}`
   }
 
   /**
-   * 检查是否为动态会话
+   * 生成UUID
+   */
+  private generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0
+      const v = c === 'x' ? r : (r & 0x3 | 0x8)
+      return v.toString(16)
+    })
+  }
+
+  /**
+   * 检查是否为动态导师会话
+   * 新格式：{UUID}_msg_{timestamp}_{suffix}
    */
   isDynamicSession(sessionId: string): boolean {
-    return sessionId.startsWith('dynamic_') && sessionId.includes(this.getCurrentUser().id)
+    // 检查是否包含_msg_标识符，这是动态导师会话的特征
+    return sessionId.includes('_msg_')
   }
 
   /**

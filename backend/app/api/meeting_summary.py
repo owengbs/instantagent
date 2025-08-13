@@ -45,10 +45,15 @@ async def generate_meeting_summary(request: GenerateSummaryRequest):
     """
     try:
         logger.info(f"🎯 收到会议总结生成请求: session_id={request.session_id}")
+        logger.info(f"🎯 请求主题: {request.topic}")
+        logger.info(f"🔍 当前所有会话ID: {list(agent_manager.conversation_sessions.keys())}")
+        logger.info(f"🔍 当前动态导师会话: {list(agent_manager.dynamic_mentors.keys())}")
         
         # 1. 获取会话消息历史
         messages = get_session_messages(request.session_id)
         if not messages:
+            logger.error(f"❌ 未找到会话消息历史: session_id={request.session_id}")
+            logger.error(f"💡 可用的会话ID: {list(agent_manager.conversation_sessions.keys())}")
             raise HTTPException(status_code=404, detail="未找到会话消息历史")
         
         logger.info(f"📋 获取到 {len(messages)} 条消息")
@@ -178,6 +183,37 @@ def get_session_messages(session_id: str) -> List[Dict[str, Any]]:
             logger.info(f"📋 找到 {len(messages)} 条消息")
             return messages
         else:
+            # 智能匹配：查找包含该sessionId的会话
+            logger.info(f"🔍 尝试智能匹配sessionId: {session_id}")
+            
+            # 方法1：查找以sessionId结尾的会话
+            for stored_session_id in agent_manager.conversation_sessions.keys():
+                if stored_session_id.endswith(session_id):
+                    logger.info(f"✅ 智能匹配成功: {stored_session_id} -> {session_id}")
+                    session = agent_manager.conversation_sessions[stored_session_id]
+                    messages = session.get("messages", [])
+                    logger.info(f"📋 找到 {len(messages)} 条消息")
+                    return messages
+            
+            # 方法2：查找包含sessionId的会话
+            for stored_session_id in agent_manager.conversation_sessions.keys():
+                if session_id in stored_session_id:
+                    logger.info(f"✅ 智能匹配成功: {stored_session_id} -> {session_id}")
+                    session = agent_manager.conversation_sessions[stored_session_id]
+                    messages = session.get("messages", [])
+                    logger.info(f"📋 找到 {len(messages)} 条消息")
+                    return messages
+            
+            # 方法3：查找默认导师会话（去掉用户ID前缀）
+            if session_id.startswith('default_'):
+                for stored_session_id in agent_manager.conversation_sessions.keys():
+                    if 'default_' in stored_session_id and session_id.replace('default_', '') in stored_session_id:
+                        logger.info(f"✅ 默认导师会话匹配成功: {stored_session_id} -> {session_id}")
+                        session = agent_manager.conversation_sessions[stored_session_id]
+                        messages = session.get("messages", [])
+                        logger.info(f"📋 找到 {len(messages)} 条消息")
+                        return messages
+            
             logger.warning(f"⚠️ 会话不存在: {session_id}")
             logger.warning(f"💡 提示：可能的会话ID: {list(agent_manager.conversation_sessions.keys())}")
             return []
@@ -208,6 +244,15 @@ def get_session_info(session_id: str) -> Dict[str, Any]:
             session = agent_manager.conversation_sessions[session_id]
             if "created_at" in session:
                 session_info["created_at"] = session["created_at"]
+        else:
+            # 智能匹配：查找包含该sessionId的会话
+            for stored_session_id in agent_manager.conversation_sessions.keys():
+                if session_id in stored_session_id:
+                    logger.info(f"✅ 智能匹配会话信息: {stored_session_id} -> {session_id}")
+                    session = agent_manager.conversation_sessions[stored_session_id]
+                    if "created_at" in session:
+                        session_info["created_at"] = session["created_at"]
+                    break
         
         # 检查是否为动态导师会话
         if session_id in agent_manager.session_topics:

@@ -76,6 +76,32 @@ const MobileChatInterface: React.FC = () => {
           const mentors: Mentor[] = JSON.parse(savedMentors);
           console.log('📱 移动端使用常规导师:', mentors)
           setCurrentMentors(mentors);
+          
+          // 为默认导师生成sessionId（确保会议纪要功能正常）
+          const dynamicSessionId = localStorage.getItem('dynamicSessionId');
+          const dynamicTopic = localStorage.getItem('dynamicTopic');
+          
+          if (dynamicSessionId) {
+            // 如果已有sessionId，直接使用
+            setSessionId(dynamicSessionId);
+            setTopic(dynamicTopic || '');
+            console.log('✅ 移动端使用现有sessionId:', dynamicSessionId)
+          } else {
+            // 生成新的sessionId
+            const timestamp = Date.now();
+            const suffix = Math.random().toString(36).slice(2, 10);
+            const defaultSessionId = `default_${timestamp}_msg_${timestamp}_${suffix}`;
+            const defaultTopic = '投资圆桌讨论';
+            
+            localStorage.setItem('dynamicSessionId', defaultSessionId);
+            localStorage.setItem('dynamicTopic', defaultTopic);
+            
+            setSessionId(defaultSessionId);
+            setTopic(defaultTopic);
+            
+            console.log('✅ 移动端生成新sessionId:', defaultSessionId)
+          }
+          
           setIsValidAccess(true);
         } catch (error) {
           console.error('❌ 移动端解析导师信息失败:', error);

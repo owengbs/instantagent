@@ -66,11 +66,23 @@ const MentorSelection: React.FC = () => {
       return
     }
 
-    // 保存选中的导师到本地存储或状态管理
+    // 为默认导师生成sessionId（确保会议纪要功能正常）
+    const timestamp = Date.now();
+    const suffix = Math.random().toString(36).slice(2, 10);
+    const defaultSessionId = `default_${timestamp}_msg_${timestamp}_${suffix}`;
+    const defaultTopic = '投资圆桌讨论';
+    
+    // 保存选中的导师到本地存储
     localStorage.setItem('selectedMentors', JSON.stringify(selectedMentors))
+    
+    // 保存会话信息（与动态导师格式保持一致）
+    localStorage.setItem('dynamicSessionId', defaultSessionId)
+    localStorage.setItem('dynamicTopic', defaultTopic)
     
     // 调试信息
     console.log('🎯 开始圆桌会议，选中的导师:', selectedMentors.map(m => ({ id: m.id, name: m.name })))
+    console.log('🔑 生成的sessionId:', defaultSessionId)
+    console.log('📋 设置的主题:', defaultTopic)
     
     // 导航到聊天页面
     navigate('/chat')

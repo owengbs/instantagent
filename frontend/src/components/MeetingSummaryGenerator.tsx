@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Sparkles
 } from 'lucide-react'
+import API_CONFIG from '../config/api'
 
 interface MeetingSummaryGeneratorProps {
   sessionId: string
@@ -34,7 +35,7 @@ const MeetingSummaryGenerator: React.FC<MeetingSummaryGeneratorProps> = ({
   const [status, setStatus] = useState<GenerationStatus>({
     stage: 'preparing',
     message: '准备生成会议总结...',
-    progress: 0
+    progress: 20
   })
   const [error, setError] = useState('')
 
@@ -43,6 +44,12 @@ const MeetingSummaryGenerator: React.FC<MeetingSummaryGeneratorProps> = ({
     setError('')
     
     try {
+      // 调试信息
+      console.log('🔍 开始生成会议纪要...')
+      console.log('📋 会话ID:', sessionId)
+      console.log('📋 主题:', topic)
+      console.log('🔗 API地址:', `${API_CONFIG.getHttpBaseUrl()}/api/meeting-summary/generate`)
+      
       // 第一阶段：准备
       setStatus({
         stage: 'preparing',
@@ -69,23 +76,31 @@ const MeetingSummaryGenerator: React.FC<MeetingSummaryGeneratorProps> = ({
       })
       
       // 调用后端API生成总结
-      const response = await fetch('/api/meeting-summary/generate', {
+      const requestBody = {
+        session_id: sessionId,
+        topic: topic
+      }
+      
+      console.log('📤 发送请求体:', requestBody)
+      
+      const response = await fetch(`${API_CONFIG.getHttpBaseUrl()}/api/meeting-summary/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          session_id: sessionId,
-          topic: topic
-        })
+        body: JSON.stringify(requestBody)
       })
+      
+      console.log('📥 收到响应:', response.status, response.statusText)
       
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('❌ API错误:', errorData)
         throw new Error(errorData.detail || '生成会议总结失败')
       }
       
       const data = await response.json()
+      console.log('✅ 成功数据:', data)
       
       // 完成
       setStatus({
