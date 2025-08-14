@@ -28,6 +28,14 @@ import { API_CONFIG } from '../config/api'
 
 const API_BASE_URL = API_CONFIG.endpoints.tts()
 
+// 在开发/外网调试（如 ngrok）时，优先走相对路径命中 Vite 代理，避免跨域/证书等导致返回HTML
+const buildUrl = (path: string) => {
+  const base = API_BASE_URL
+  if (!base) return `/api/tts${path}`
+  // base 可能为 ''（相对），或 'http(s)://.../api/tts'
+  return base.startsWith('http') ? `${base}${path}` : `/api/tts${path}`
+}
+
 // Web Audio API 上下文
 let audioContext: AudioContext | null = null
 
@@ -60,7 +68,7 @@ export const useQwenTTS = (options: QwenTTSOptions = {}): QwenTTSReturn => {
   const fetchVoices = useCallback(async () => {
     try {
       console.log('🎤 获取Qwen-TTS语音列表...')
-      const response = await fetch(`${API_BASE_URL}/voices`)
+      const response = await fetch(buildUrl('/voices'))
       
       if (!response.ok) {
         throw new Error(`获取语音列表失败: ${response.status}`)
@@ -93,7 +101,7 @@ export const useQwenTTS = (options: QwenTTSOptions = {}): QwenTTSReturn => {
   // 检查TTS服务健康状态 - 移除依赖避免无限循环
   const checkTTSHealth = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/health`)
+      const response = await fetch(buildUrl('/health'))
       const health = await response.json()
       
       if (health.status !== 'healthy') {
@@ -136,7 +144,7 @@ export const useQwenTTS = (options: QwenTTSOptions = {}): QwenTTSReturn => {
       abortControllerRef.current = new AbortController()
 
       // 调用TTS API
-      const response = await fetch(`${API_BASE_URL}/synthesize`, {
+      const response = await fetch(buildUrl('/synthesize'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
