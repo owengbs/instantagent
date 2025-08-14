@@ -78,6 +78,17 @@ function App() {
     return <LoadingScreen />
   }
 
+  // 在开发/外网调试（如 ngrok）时，确保已卸载任何已注册的 Service Worker，避免拦截接口/WS 导致返回 HTML
+  useEffect(() => {
+    const isProd = process.env.NODE_ENV === 'production'
+    const isNgrok = (window.location.host || '').includes('ngrok')
+    if ('serviceWorker' in navigator && (!isProd || isNgrok)) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister().catch(() => {}))
+      })
+    }
+  }, [])
+
   return (
     <Router>
       <ChatProvider>

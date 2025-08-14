@@ -104,12 +104,12 @@ const MentorSelection: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+      <div className="relative max-w-6xl mx-auto px-4 pt-6 pb-24 sm:pb-28">
         {/* 简化的头部 */}
-        <motion.div
+         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+           className="text-center mb-6 sm:mb-8"
         >
           <div className="flex items-center justify-center space-x-3 mb-4">
             <div className="p-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl">
@@ -139,11 +139,11 @@ const MentorSelection: React.FC = () => {
         </motion.div>
 
         {/* 核心功能区域 */}
-        <motion.div
+         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex flex-col sm:flex-row gap-4 mb-8"
+           className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 sm:mb-8"
         >
           {/* 讨论话题按钮 - 主要功能 */}
           <motion.button
@@ -157,7 +157,7 @@ const MentorSelection: React.FC = () => {
           </motion.button>
 
           {/* 搜索框 */}
-          <div className="relative flex-1">
+           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -169,7 +169,7 @@ const MentorSelection: React.FC = () => {
           </div>
 
           {/* 投资风格过滤 */}
-          <div className="relative">
+           <div className="relative min-w-[160px]">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <select
               value={filterStyle}
@@ -185,11 +185,11 @@ const MentorSelection: React.FC = () => {
         </motion.div>
 
         {/* 导师网格 - 优化移动端布局 */}
-        <motion.div
+         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-8"
+           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
         >
           <AnimatePresence>
             {filteredMentors.map((mentor, index) => (
@@ -241,27 +241,25 @@ const MentorSelection: React.FC = () => {
         <AnimatePresence>
           {selectedMentors.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10 px-4 w-full max-w-sm"
+              exit={{ opacity: 0, y: 16 }}
+              className="sticky bottom-4 z-10 mt-6"
             >
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={startRoundtable}
-                className="w-full flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300"
-              >
-                <span className="text-base font-semibold">
-                  开始圆桌会议
-                </span>
-                <div className="flex items-center space-x-1">
-                  <span className="text-xs opacity-80">
-                    ({selectedMentors.length}位导师)
-                  </span>
-                  <ArrowRight className="w-4 h-4" />
-                </div>
-              </motion.button>
+              <div className="max-w-md mx-auto">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={startRoundtable}
+                  className="w-full flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300"
+                >
+                  <span className="text-base font-semibold">开始圆桌会议</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-xs opacity-80">({selectedMentors.length}位导师)</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </motion.button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
