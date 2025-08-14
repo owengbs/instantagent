@@ -103,23 +103,23 @@ const MentorSelection: React.FC = () => {
   const investmentStyles = Array.from(new Set(availableMentors.map(mentor => mentor.investmentStyle)))
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* 头部 */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+        {/* 简化的头部 */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
           <div className="flex items-center justify-center space-x-3 mb-4">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
-              <Users className="w-8 h-8 text-white" />
+            <div className="p-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl">
+              <Users className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               投资大师圆桌会议
             </h1>
           </div>
-          <p className="text-lg text-gray-600 mb-6">
+          <p className="text-sm sm:text-base text-gray-600 mb-6 max-w-md mx-auto">
             选择您想要对话的投资导师，开启专属的智慧交流之旅
           </p>
           
@@ -128,68 +128,68 @@ const MentorSelection: React.FC = () => {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="inline-flex items-center space-x-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full"
+              className="inline-flex items-center space-x-2 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-sm"
             >
-              <Users className="w-4 h-4" />
-              <span className="text-sm font-medium">
+              <Users className="w-3.5 h-3.5" />
+              <span className="font-medium">
                 已选择 {selectedMentors.length} 位导师
               </span>
             </motion.div>
           )}
         </motion.div>
 
-        {/* 搜索和过滤 */}
+        {/* 核心功能区域 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-8"
+          className="flex flex-col sm:flex-row gap-4 mb-8"
         >
+          {/* 讨论话题按钮 - 主要功能 */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowDynamicGenerator(true)}
+            className="flex-1 flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 shadow-lg hover:shadow-xl"
+          >
+            <Zap className="w-5 h-5" />
+            <span className="font-semibold text-lg">讨论话题</span>
+          </motion.button>
+
           {/* 搜索框 */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="搜索导师姓名、职位或描述..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="搜索导师..."
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm"
             />
           </div>
 
           {/* 投资风格过滤 */}
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <select
               value={filterStyle}
               onChange={(e) => setFilterStyle(e.target.value)}
-              className="pl-10 pr-8 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white min-w-[200px]"
+              className="pl-10 pr-8 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white/80 backdrop-blur-sm min-w-[160px] text-sm"
             >
-              <option value="">所有投资风格</option>
+              <option value="">所有风格</option>
               {investmentStyles.map(style => (
                 <option key={style} value={style}>{style}</option>
               ))}
             </select>
           </div>
-
-          {/* 讨论话题按钮 */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowDynamicGenerator(true)}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl hover:from-green-600 hover:to-blue-600 transition-all duration-300 shadow-lg"
-          >
-            <Zap className="w-5 h-5" />
-            <span className="font-medium">讨论话题</span>
-          </motion.button>
         </motion.div>
 
-        {/* 导师网格 */}
+        {/* 导师网格 - 优化移动端布局 */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-8"
         >
           <AnimatePresence>
             {filteredMentors.map((mentor, index) => (
@@ -199,7 +199,7 @@ const MentorSelection: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.05 }}
               >
                 <MentorCard
                   mentor={mentor}
@@ -218,18 +218,18 @@ const MentorSelection: React.FC = () => {
             animate={{ opacity: 1 }}
             className="text-center py-12"
           >
-            <div className="text-gray-400 mb-4">
-              <Users className="w-16 h-16 mx-auto" />
+            <div className="text-gray-300 mb-4">
+              <Users className="w-12 h-12 mx-auto" />
             </div>
-            <h3 className="text-lg font-medium text-gray-600 mb-2">
+            <h3 className="text-base font-medium text-gray-600 mb-2">
               没有找到匹配的导师
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-sm text-gray-500 mb-4">
               尝试调整搜索条件或使用"讨论话题"功能
             </p>
             <button
               onClick={() => setShowDynamicGenerator(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
             >
               <Zap className="w-4 h-4" />
               <span>讨论话题</span>
@@ -237,29 +237,29 @@ const MentorSelection: React.FC = () => {
           </motion.div>
         )}
 
-        {/* 开始按钮 */}
+        {/* 开始按钮 - 优化移动端位置 */}
         <AnimatePresence>
           {selectedMentors.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-10"
+              className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10 px-4 w-full max-w-sm"
             >
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={startRoundtable}
-                className="flex items-center space-x-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300"
+                className="w-full flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300"
               >
-                <span className="text-lg font-semibold">
+                <span className="text-base font-semibold">
                   开始圆桌会议
                 </span>
                 <div className="flex items-center space-x-1">
-                  <span className="text-sm opacity-80">
+                  <span className="text-xs opacity-80">
                     ({selectedMentors.length}位导师)
                   </span>
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4" />
                 </div>
               </motion.button>
             </motion.div>
