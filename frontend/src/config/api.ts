@@ -43,8 +43,10 @@ const getConfig = () => {
   const isDev = process.env.NODE_ENV === 'development'
   const env = detectEnvironment()
   
-  // 如果环境变量已设置，直接使用
-  if (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_WS_BASE_URL) {
+  // 如果环境变量已设置，直接使用（仅当仍在本机或内网场景）。
+  // 当通过外网域名（如 ngrok）访问开发服务器时，不使用绝对地址，改走相对路径以命中 Vite 代理。
+  const isExternalDevHost = !env.isLocalDev
+  if (!isExternalDevHost && (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_WS_BASE_URL)) {
     return {
       HTTP_BASE_URL: import.meta.env.VITE_API_BASE_URL || DEFAULT_CONFIG[isDev ? 'development' : 'production'].HTTP_BASE_URL,
       WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL || DEFAULT_CONFIG[isDev ? 'development' : 'production'].WS_BASE_URL,
@@ -52,15 +54,15 @@ const getConfig = () => {
     }
   }
   
-  // 智能配置：移动端访问开发服务器时，使用当前域名
-  if (isDev && env.isMobileAccessingDev) {
+  // 智能配置：移动端访问开发服务器或通过外网域名（如 ngrok）访问时，使用当前域名（相对路径 + 由 Vite 代理转发）
+  if (isDev && (env.isMobileAccessingDev || isExternalDevHost)) {
     const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const currentHost = window.location.host
     
     return {
-      HTTP_BASE_URL: `${protocol}//${currentHost}`,
-      WS_BASE_URL: `${wsProtocol}//${currentHost}`,
+      HTTP_BASE_URL: '', // 使用相对路径让 Vite 代理接管
+      WS_BASE_URL: '',   // WebSocket 也走相对，使用同源构建
       HOST: currentHost
     }
   }
@@ -74,21 +76,19 @@ const config = getConfig()
 export const API_CONFIG = {
   // HTTP API地址
   getHttpBaseUrl(): string {
-    if (process.env.NODE_ENV === 'development') {
-      return config.HTTP_BASE_URL
-    }
-    // 生产环境使用相对路径
-    return '/api'
+    // 当配置为空字符串时，表示使用相对路径（由 Vite 代理或同源后端处理）
+    if (!config.HTTP_BASE_URL) return ''
+    return config.HTTP_BASE_URL
   },
 
   // WebSocket地址
   getWsBaseUrl(): string {
-    if (process.env.NODE_ENV === 'development') {
-      return config.WS_BASE_URL
+    if (!config.WS_BASE_URL) {
+      // 相对路径，同源构建
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      return `${protocol}//${window.location.host}`
     }
-    // 生产环境根据当前协议和域名构建
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    return `${protocol}//${window.location.host}`
+    return config.WS_BASE_URL
   },
 
   // 获取主机地址
