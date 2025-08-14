@@ -12,7 +12,7 @@ import { MentorManagement } from './components/MentorManagement'
 import DebugMentorTest from './components/DebugMentorTest'
 import MultiUserTestPage from './components/MultiUserTestPage'
 import UserManagementPanel from './components/UserManagementPanel'
-import PWAInstaller from './components/PWAInstaller'
+// 移除PWA安装提示功能
 
 import { ChatProvider, useChat } from './contexts/ChatContext'
 
@@ -96,8 +96,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           
-          {/* PWA安装器 */}
-          <PWAInstaller />
+          {/* 已移除PWA安装提示 */}
         </div>
       </ChatProvider>
     </Router>
