@@ -28,6 +28,18 @@ const PWAInstaller: React.FC = () => {
   const [swStatus, setSWStatus] = useState<'installing' | 'waiting' | 'active' | 'error' | null>(null)
 
   useEffect(() => {
+    // 在开发/外网调试（如 ngrok）环境禁用 Service Worker，避免拦截 API/WS 导致 JSON 解析错误或连接失败
+    const isProd = process.env.NODE_ENV === 'production'
+    const host = window.location.host || ''
+    const isNgrok = host.includes('ngrok')
+    if (!isProd || isNgrok) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(r => r.unregister().catch(() => {}))
+        })
+      }
+      return
+    }
     // 检查是否已安装
     const checkInstalled = () => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches
@@ -52,7 +64,7 @@ const PWAInstaller: React.FC = () => {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
-    // 注册Service Worker
+    // 仅在生产环境注册 Service Worker
     registerServiceWorker()
 
     return () => {
