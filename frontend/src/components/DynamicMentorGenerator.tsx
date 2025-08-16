@@ -58,6 +58,13 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
         const data = JSON.parse(event.data)
         
         if (data.type === 'dynamic_mentors_generated') {
+          // 使用后端返回的会话ID，确保前后端一致
+          const backendSessionId = data.session_id
+          if (backendSessionId) {
+            setSessionId(backendSessionId)
+            console.log('🔄 使用后端返回的会话ID:', backendSessionId)
+          }
+          
           // 转换导师数据格式
           const mentors: Mentor[] = data.mentors.map((mentor: any) => ({
             id: mentor.agent_id,
