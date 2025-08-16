@@ -501,7 +501,14 @@ class AgentManager:
             
             # 创建动态导师实例
             dynamic_mentor_ids = []
-            for mentor_data in mentor_data_list:
+            for i, mentor_data in enumerate(mentor_data_list):
+                # 为每个导师生成唯一的ID，避免不同会话间的冲突
+                original_id = mentor_data.get('id', str(i+1))
+                unique_agent_id = f"dynamic_{session_id}_{original_id}_{random.randint(1000, 9999)}"
+                
+                # 更新mentor_data中的ID，确保DynamicMentor使用唯一ID
+                mentor_data['id'] = unique_agent_id
+                
                 # 创建动态导师实例
                 dynamic_mentor = DynamicMentor(mentor_data)
                 agent_id = dynamic_mentor.agent_id
