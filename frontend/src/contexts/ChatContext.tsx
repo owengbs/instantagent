@@ -272,18 +272,40 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   agent_name: data.agent_name,
                   order: data.order,
                   isMultiAgent: true,
-                  agent: {
-                    id: data.agent_id,
-                    name: data.agent_name || '未知智能体',
-                    description: data.agent_id === 'buffett' ? '价值投资大师' : 
-                                data.agent_id === 'soros' ? '宏观投资大师' : 
-                                data.agent_id === 'munger' ? '多元思维专家' :
-                                data.agent_id === 'krugman' ? '宏观经济专家' : '投资导师',
-                    color: data.agent_id === 'buffett' ? '#3B82F6' : 
-                           data.agent_id === 'soros' ? '#10B981' : 
-                           data.agent_id === 'munger' ? '#8B5CF6' :
-                           data.agent_id === 'krugman' ? '#F59E0B' : '#6B7280'
-                  }
+                  agent: (() => {
+                    // 优先使用动态导师信息
+                    const selectedMentors = localStorage.getItem('selectedMentors');
+                    if (selectedMentors) {
+                      try {
+                        const mentors = JSON.parse(selectedMentors);
+                        const mentor = mentors.find((m: any) => m.id === data.agent_id);
+                        if (mentor) {
+                          return {
+                            id: mentor.id,
+                            name: mentor.name,
+                            description: mentor.title,
+                            color: mentor.color
+                          };
+                        }
+                      } catch (error) {
+                        console.warn('解析动态导师信息失败，使用默认信息:', error);
+                      }
+                    }
+                    
+                    // 兜底：使用默认导师信息
+                    return {
+                      id: data.agent_id,
+                      name: data.agent_name || '未知智能体',
+                      description: data.agent_id === 'buffett' ? '价值投资大师' : 
+                                  data.agent_id === 'soros' ? '宏观投资大师' : 
+                                  data.agent_id === 'munger' ? '多元思维专家' :
+                                  data.agent_id === 'krugman' ? '宏观经济专家' : '投资导师',
+                      color: data.agent_id === 'buffett' ? '#3B82F6' : 
+                             data.agent_id === 'soros' ? '#10B981' : 
+                             data.agent_id === 'munger' ? '#8B5CF6' :
+                             data.agent_id === 'krugman' ? '#F59E0B' : '#6B7280'
+                    };
+                  })()
                 }
               })
               

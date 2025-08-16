@@ -496,19 +496,31 @@ ${summaryData.summary?.actionable_advice?.map((advice: string, index: number) =>
             if (message.type === 'user') {
               agent = agentInfo.user;
             } else if (message.type === 'multi_agent_response') {
-              // 多智能体回复消息
-              agent = {
-                id: message.agent_id,
-                name: message.agent_name || '未知导师',
-                description: message.agent_id === 'buffett' ? '价值投资大师' : 
-                            message.agent_id === 'soros' ? '宏观投资大师' : 
-                            message.agent_id === 'munger' ? '多元思维专家' :
-                            message.agent_id === 'krugman' ? '宏观经济专家' : '投资导师',
-                color: message.agent_id === 'buffett' ? '#3B82F6' : 
-                       message.agent_id === 'soros' ? '#10B981' : 
-                       message.agent_id === 'munger' ? '#8B5CF6' :
-                       message.agent_id === 'krugman' ? '#F59E0B' : '#6B7280'
-              };
+              // 多智能体回复消息 - 优先使用动态导师信息
+              const mentor = selectedMentors.find(m => m.id === message.agent_id);
+              if (mentor) {
+                // 使用动态导师信息
+                agent = {
+                  id: mentor.id,
+                  name: mentor.name,
+                  description: mentor.title,
+                  color: mentor.color
+                };
+              } else {
+                // 兜底：使用默认导师信息
+                agent = {
+                  id: message.agent_id,
+                  name: message.agent_name || '未知导师',
+                  description: message.agent_id === 'buffett' ? '价值投资大师' : 
+                              message.agent_id === 'soros' ? '宏观投资大师' : 
+                              message.agent_id === 'munger' ? '多元思维专家' :
+                              message.agent_id === 'krugman' ? '宏观经济专家' : '投资导师',
+                  color: message.agent_id === 'buffett' ? '#3B82F6' : 
+                         message.agent_id === 'soros' ? '#10B981' : 
+                         message.agent_id === 'munger' ? '#8B5CF6' :
+                         message.agent_id === 'krugman' ? '#F59E0B' : '#6B7280'
+                };
+              }
             } else {
               // 单个智能体消息
               agent = agentInfo[message.agent_id as keyof typeof agentInfo];
