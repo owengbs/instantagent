@@ -342,9 +342,27 @@ class RealtimeChatManager:
                         logger.error("❌ 连默认导师都不可用！")
                         selected_mentors = []
             elif selected_mentors:
-                # 没有动态导师，检查用户选择的导师是否可用
+                # 检查用户选择的导师是否可用
                 available_selected = [mid for mid in selected_mentors if mid in agent_manager.agents]
-                if available_selected:
+                
+                # 检查是否有动态导师
+                dynamic_selected = [mid for mid in selected_mentors if mid.startswith('dynamic_')]
+                
+                if dynamic_selected:
+                    # 如果用户选择的是动态导师，检查是否在agent_manager中可用
+                    available_dynamic = [mid for mid in dynamic_selected if mid in agent_manager.agents]
+                    if available_dynamic:
+                        selected_mentors = available_dynamic
+                        logger.info(f"🎯 使用前端选择的动态导师: {selected_mentors}")
+                    else:
+                        logger.warning(f"⚠️ 前端选择的动态导师不可用: {dynamic_selected}")
+                        # 回退到默认导师
+                        default_mentors = ['buffett', 'munger', 'soros']
+                        available_default = [mid for mid in default_mentors if mid in agent_manager.agents]
+                        selected_mentors = available_default
+                        logger.info(f"🔄 回退到默认导师: {selected_mentors}")
+                elif available_selected:
+                    # 使用前端选择的静态导师
                     selected_mentors = available_selected
                     logger.info(f"🎯 使用前端选择的静态导师: {selected_mentors}")
                 else:
