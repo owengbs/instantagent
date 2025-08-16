@@ -22,7 +22,9 @@ class DynamicMentor(BaseAgent):
             mentor_data: 包含导师特征的字典
         """
         # 从生成的数据中提取基本信息
-        agent_id = mentor_data.get('id', f"dynamic_{random.randint(1000, 9999)}")
+        # 生成唯一的动态导师ID，避免ID冲突
+        base_id = mentor_data.get('id', str(random.randint(1000, 9999)))
+        agent_id = f"dynamic_{base_id}_{random.randint(10000, 99999)}"
         name = mentor_data.get('name', '动态导师')
         title = mentor_data.get('title', '投资专家')
         description = mentor_data.get('background', '')
