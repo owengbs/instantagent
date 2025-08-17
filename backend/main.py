@@ -119,6 +119,6 @@ if __name__ == "__main__":
         "main:app",
         host=settings.host,
         port=settings.port,
-        reload=settings.debug,
+        reload=False,  # 关闭热重载，避免动态导师数据丢失
         log_level=settings.log_level.lower()
     ) 
