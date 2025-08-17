@@ -115,6 +115,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 生成用户特定的连接ID
       const connectionId = userManager.generateConnectionId(sessionId)
       const wsUrl = API_CONFIG.endpoints.chatWs(connectionId)
+      
+      console.log('🔗 WebSocket连接信息:')
+      console.log('  - SessionID:', sessionId)
+      console.log('  - ConnectionID:', connectionId)
+      console.log('  - WebSocket URL:', wsUrl)
+      console.log('  - 当前域名:', window.location.host)
+      console.log('  - 当前协议:', window.location.protocol)
 
       wsRef.current = new WebSocket(wsUrl)
 
@@ -403,8 +410,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       wsRef.current.onerror = (error) => {
-        console.error('WebSocket 错误:', error)
-        dispatch({ type: 'SET_ERROR', payload: 'WebSocket 连接错误' })
+        console.error('❌ WebSocket 连接错误:', error)
+        console.error('❌ WebSocket 错误详情:')
+        console.error('  - URL:', wsUrl)
+        console.error('  - ReadyState:', wsRef.current?.readyState)
+        console.error('  - 错误时间:', new Date().toISOString())
+        dispatch({ type: 'SET_ERROR', payload: `WebSocket 连接错误: ${wsUrl}` })
       }
 
     } catch (error) {

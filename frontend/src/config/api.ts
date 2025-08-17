@@ -84,9 +84,8 @@ export const API_CONFIG = {
   // WebSocket地址
   getWsBaseUrl(): string {
     if (!config.WS_BASE_URL) {
-      // 相对路径，同源构建
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      return `${protocol}//${window.location.host}`
+      // 相对路径，使用空字符串让端点函数决定是否使用绝对路径
+      return ''
     }
     return config.WS_BASE_URL
   },
@@ -101,14 +100,33 @@ export const API_CONFIG = {
 
   // 具体的API端点
   endpoints: {
-    // 聊天WebSocket
-    chatWs: (sessionId: string) => `${API_CONFIG.getWsBaseUrl()}/realtime/ws/${sessionId}`,
+    // 聊天WebSocket - 在外网环境（如ngrok）使用相对路径更可靠
+    chatWs: (sessionId: string) => {
+      const wsBase = API_CONFIG.getWsBaseUrl()
+      if (!wsBase || wsBase === '') {
+        // 相对路径，让 Vite 代理处理
+        return `/realtime/ws/${sessionId}`
+      }
+      return `${wsBase}/realtime/ws/${sessionId}`
+    },
     
     // 语音识别WebSocket  
-    asrWs: () => `${API_CONFIG.getWsBaseUrl()}/api/asr/ws`,
+    asrWs: () => {
+      const wsBase = API_CONFIG.getWsBaseUrl()
+      if (!wsBase || wsBase === '') {
+        return `/api/asr/ws`
+      }
+      return `${wsBase}/api/asr/ws`
+    },
     
     // 实时对话WebSocket
-    realtimeWs: () => `${API_CONFIG.getWsBaseUrl()}/realtime/ws`,
+    realtimeWs: () => {
+      const wsBase = API_CONFIG.getWsBaseUrl()
+      if (!wsBase || wsBase === '') {
+        return `/realtime/ws`
+      }
+      return `${wsBase}/realtime/ws`
+    },
     
     // TTS API
     tts: () => `${API_CONFIG.getHttpBaseUrl()}/api/tts`,
