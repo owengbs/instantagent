@@ -132,16 +132,27 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // 延迟发送导师信息，确保 WebSocket 连接完全建立
         setTimeout(() => {
+          console.log('🔍 开始检查导师信息发送...')
+          console.log('🔍 WebSocket状态:', wsRef.current?.readyState)
+          console.log('🔍 WebSocket.OPEN:', WebSocket.OPEN)
+          
           // 发送选中的导师信息到后端
           const selectedMentors = localStorage.getItem('selectedMentors')
           const dynamicSessionId = localStorage.getItem('dynamicSessionId')
+          const isDynamic = localStorage.getItem('isDynamic')
+          
+          console.log('🔍 localStorage检查:')
+          console.log('  selectedMentors:', selectedMentors)
+          console.log('  dynamicSessionId:', dynamicSessionId)
+          console.log('  isDynamic:', isDynamic)
           
           if (selectedMentors) {
             try {
               const mentors = JSON.parse(selectedMentors)
               const mentorIds = mentors.map((mentor: any) => mentor.id)
-              console.log('🎯 发送选中的导师信息到后端:', mentorIds)
-              console.log('📋 导师详细信息:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
+              console.log('🎯 准备发送导师信息到后端:')
+              console.log('  mentorIds:', mentorIds)
+              console.log('  mentors详情:', mentors.map((m: any) => ({ id: m.id, name: m.name, isDynamic: m.isDynamic })))
               
               if (wsRef.current?.readyState === WebSocket.OPEN) {
                 const message = {
@@ -151,14 +162,34 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('📤 发送导师选择消息:', message)
                 wsRef.current.send(JSON.stringify(message))
                 console.log('✅ 导师选择消息发送成功')
+                
+                // 增加发送后的验证
+                setTimeout(() => {
+                  console.log('🔍 发送后验证WebSocket状态:', wsRef.current?.readyState)
+                }, 100)
               } else {
                 console.error('❌ WebSocket 未连接，无法发送导师信息')
+                console.error('  WebSocket状态详情:', {
+                  readyState: wsRef.current?.readyState,
+                  url: wsRef.current?.url,
+                  CONNECTING: WebSocket.CONNECTING,
+                  OPEN: WebSocket.OPEN,
+                  CLOSING: WebSocket.CLOSING,
+                  CLOSED: WebSocket.CLOSED
+                })
               }
             } catch (error) {
               console.error('❌ 解析选中的导师信息失败:', error)
             }
           } else {
-            console.log('⚠️ 未找到选中的导师信息')
+            console.log('⚠️ localStorage中未找到selectedMentors')
+            console.log('⚠️ 所有localStorage内容:')
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i)
+              if (key) {
+                console.log(`  ${key}:`, localStorage.getItem(key))
+              }
+            }
           }
         }, 500) // 延迟 500ms 确保连接稳定
       }
@@ -386,6 +417,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // 触发顺序播放处理
                 processSequentialSpeechQueue()
               }
+              break
+              
+            case 'mentors_set':
+              // 导师设置确认
+              console.log('✅ 收到导师设置确认:', data)
+              console.log('✅ 设置的导师列表:', data.mentors)
               break
             
             case 'error':

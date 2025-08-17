@@ -83,11 +83,20 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
             isDynamic: true
           }))
           
+          console.log('🎯 动态导师生成完成:')
+          console.log('  后端返回的sessionId:', backendSessionId)
+          console.log('  当前组件的sessionId:', sessionId)
+          console.log('  生成的导师数量:', mentors.length)
+          console.log('  生成的导师详情:', mentors.map(m => ({ 
+            id: m.id, 
+            name: m.name, 
+            extractedSessionId: m.id.match(/_msg_(\d+)_/)?.[1] 
+          })))
+          
           setGeneratedMentors(mentors)
           // 默认全选所有生成的导师
           const mentorIds = mentors.map(m => m.id)
-          console.log('🎯 生成的导师ID:', mentorIds)
-          console.log('📋 生成的导师详情:', mentors.map(m => ({ id: m.id, name: m.name })))
+          console.log('🎯 默认选择的导师ID:', mentorIds)
           setSelectedMentorIds(mentorIds)
           setIsGenerating(false)
           ws.close()
@@ -129,23 +138,46 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
 
   // 开始对话
   const handleStartConversation = () => {
-    console.log('🚀 开始对话')
-    console.log('📋 当前选择的导师ID:', selectedMentorIds)
-    console.log('📋 所有生成的导师:', generatedMentors.map(m => ({ id: m.id, name: m.name })))
+    console.log('🚀 开始对话准备')
+    console.log('  当前sessionId:', sessionId)
+    console.log('  当前topic:', topic)
+    console.log('  selectedMentorIds:', selectedMentorIds)
+    console.log('  generatedMentors:', generatedMentors.map(m => ({ id: m.id, name: m.name })))
     
     if (selectedMentorIds.length > 0) {
       const selectedMentors = generatedMentors.filter(mentor => selectedMentorIds.includes(mentor.id))
-      console.log('✅ 最终选择的导师:', selectedMentors.map(m => ({ id: m.id, name: m.name })))
+      console.log('✅ 最终选择的导师详情:')
+      selectedMentors.forEach((mentor, index) => {
+        console.log(`  ${index + 1}. ${mentor.name} (${mentor.id})`)
+        console.log(`     提取的sessionId: ${mentor.id.match(/_msg_(\d+)_/)?.[1]}`)
+      })
+      
       // 将动态导师选择结果持久化，避免路由状态在某些环境下丢失时回退到默认导师
       try {
+        const localStorageData = {
+          selectedMentors: selectedMentors,
+          dynamicSessionId: sessionId,
+          dynamicTopic: topic,
+          isDynamic: 'true'
+        }
+        console.log('💾 保存到localStorage的数据:', localStorageData)
+        
         localStorage.setItem('selectedMentors', JSON.stringify(selectedMentors))
         localStorage.setItem('dynamicSessionId', sessionId)
         localStorage.setItem('dynamicTopic', topic)
         localStorage.setItem('isDynamic', 'true')
+        
+        // 验证保存结果
+        console.log('✅ localStorage保存验证:')
+        console.log('  selectedMentors:', localStorage.getItem('selectedMentors'))
+        console.log('  dynamicSessionId:', localStorage.getItem('dynamicSessionId'))
+        console.log('  dynamicTopic:', localStorage.getItem('dynamicTopic'))
+        console.log('  isDynamic:', localStorage.getItem('isDynamic'))
       } catch (e) {
         console.warn('localStorage 持久化动态导师失败（不影响继续导航）:', e)
       }
 
+      console.log('🔄 开始跳转到聊天页面')
       onMentorsGenerated(selectedMentors, topic, sessionId)
       navigate('/chat', { 
         state: { 
@@ -155,6 +187,8 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
           isDynamic: true
         }
       })
+    } else {
+      console.warn('⚠️ 没有选择任何导师，无法开始对话')
     }
   }
 
