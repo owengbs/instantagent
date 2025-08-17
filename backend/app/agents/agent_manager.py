@@ -570,25 +570,71 @@ class AgentManager:
         Args:
             session_id: 会话ID
         """
+        logger.info(f"🔍 尝试清理会话 {session_id} 的动态导师")
+        logger.info(f"🔍 当前dynamic_mentors: {list(self.dynamic_mentors.keys())}")
+        logger.info(f"🔍 当前agents: {list(self.agents.keys())}")
+        
         if session_id in self.dynamic_mentors:
             # 注销动态导师
             for agent_id in self.dynamic_mentors[session_id]:
                 if agent_id in self.agents:
                     del self.agents[agent_id]
+                    logger.info(f"🗑️ 删除智能体: {agent_id}")
                 if agent_id in self.agent_configs:
                     del self.agent_configs[agent_id]
+                    logger.info(f"🗑️ 删除配置: {agent_id}")
             
             # 清理会话数据
             del self.dynamic_mentors[session_id]
             if session_id in self.session_topics:
                 del self.session_topics[session_id]
             
-            logger.info(f"🗑️ 清理会话 {session_id} 的动态导师")
+            logger.info(f"🗑️ 清理会话 {session_id} 的动态导师完成")
+        else:
+            logger.warning(f"⚠️ 会话 {session_id} 不在dynamic_mentors中")
     
     def is_dynamic_mentor(self, agent_id: str) -> bool:
         """判断是否为动态导师"""
         config = self.agent_configs.get(agent_id, {})
         return config.get('is_dynamic', False)
+    
+    def cleanup_user_dynamic_mentors(self, user_id: str):
+        """
+        清理用户的所有动态导师（防止重复生成导致冲突）
+        
+        Args:
+            user_id: 用户ID
+        """
+        logger.info(f"🧹 开始清理用户 {user_id} 的所有动态导师")
+        
+        # 找到所有属于该用户的session
+        user_sessions = []
+        for session_id in self.dynamic_mentors.keys():
+            if user_id in session_id:  # session_id包含user_id
+                user_sessions.append(session_id)
+        
+        logger.info(f"🔍 找到用户 {user_id} 的会话: {user_sessions}")
+        
+        # 清理每个会话的动态导师
+        cleaned_count = 0
+        for session_id in user_sessions:
+            if session_id in self.dynamic_mentors:
+                agent_ids = self.dynamic_mentors[session_id].copy()
+                for agent_id in agent_ids:
+                    if agent_id in self.agents:
+                        del self.agents[agent_id]
+                        logger.info(f"🗑️ 删除用户 {user_id} 的智能体: {agent_id}")
+                        cleaned_count += 1
+                    if agent_id in self.agent_configs:
+                        del self.agent_configs[agent_id]
+                
+                # 删除会话记录
+                del self.dynamic_mentors[session_id]
+                if session_id in self.session_topics:
+                    del self.session_topics[session_id]
+                logger.info(f"🗑️ 删除用户 {user_id} 的会话: {session_id}")
+        
+        logger.info(f"✅ 用户 {user_id} 的动态导师清理完成，共清理了 {cleaned_count} 个导师")
 
 # 创建全局智能体管理器实例
 agent_manager = AgentManager() 

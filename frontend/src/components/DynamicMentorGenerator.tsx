@@ -36,12 +36,27 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
       return
     }
 
+    // 防重复生成：如果已经有生成的导师，先确认是否要重新生成
+    if (generatedMentors.length > 0) {
+      const confirmed = window.confirm('您已经生成过导师了，是否要重新生成？这将覆盖之前的导师。')
+      if (!confirmed) {
+        return
+      }
+      console.log('🔄 用户确认重新生成动态导师')
+      
+      // 清理之前的状态
+      setGeneratedMentors([])
+      setSelectedMentorIds([])
+      setSessionId('')
+    }
+
     setIsGenerating(true)
     setError('')
     
     try {
       const sessionId = generateSessionId()
       setSessionId(sessionId)
+      console.log('🆕 生成新的sessionId:', sessionId)
 
       // 通过WebSocket发送生成请求
       const ws = new WebSocket(API_CONFIG.endpoints.chatWs(sessionId))
@@ -154,6 +169,13 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
       
       // 将动态导师选择结果持久化，避免路由状态在某些环境下丢失时回退到默认导师
       try {
+        // 先清理之前的动态导师信息，避免冲突
+        console.log('🧹 清理之前的localStorage数据')
+        localStorage.removeItem('selectedMentors')
+        localStorage.removeItem('dynamicSessionId') 
+        localStorage.removeItem('dynamicTopic')
+        localStorage.removeItem('isDynamic')
+        
         const localStorageData = {
           selectedMentors: selectedMentors,
           dynamicSessionId: sessionId,

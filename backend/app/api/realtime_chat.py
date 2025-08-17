@@ -778,6 +778,13 @@ async def handle_realtime_message(client_id: str, message: dict):
         try:
             logger.info(f"🎯 收到动态导师生成请求: topic='{topic}', session_id='{session_id}'")
             
+            # 解析用户ID，清理该用户之前的动态导师
+            user_id, parsed_session_id = realtime_manager._parse_client_id(client_id)
+            logger.info(f"🧹 准备清理用户 {user_id} 的旧动态导师")
+            
+            # 清理该用户所有的动态导师（防止重复生成导致冲突）
+            agent_manager.cleanup_user_dynamic_mentors(user_id)
+            
             # 生成动态导师
             mentors = await agent_manager.generate_dynamic_mentors(topic, session_id)
             

@@ -73,11 +73,6 @@ function App() {
     return () => clearTimeout(timer)
   }, [])
 
-  // 启动时的加载画面
-  if (isLoading) {
-    return <LoadingScreen />
-  }
-
   // 在开发/外网调试（如 ngrok）时，确保已卸载任何已注册的 Service Worker，避免拦截接口/WS 导致返回 HTML
   useEffect(() => {
     const isProd = process.env.NODE_ENV === 'production'
@@ -88,6 +83,11 @@ function App() {
       })
     }
   }, [])
+
+  // 启动时的加载画面
+  if (isLoading) {
+    return <LoadingScreen />
+  }
 
   return (
     <Router>
