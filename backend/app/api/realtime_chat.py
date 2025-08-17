@@ -79,25 +79,50 @@ class RealtimeChatManager:
     def _parse_client_id(self, client_id: str) -> tuple[str, str]:
         """解析client_id获取用户ID和会话ID"""
         try:
-            # 格式: user_id_session_timestamp_random 或 dynamic_user_id_timestamp_random
+            logger.info(f"🔍 解析client_id: {client_id}")
+            
+            # 格式分析：
+            # 1. 动态导师生成时：直接使用 session_id (如：48a865a3-9a57-4c3a-b0c3-ea4bb7a52265_msg_1755400518833_tjspaimi)
+            # 2. 对话时：user_id + "_" + session_id (如：48a865a3-9a57-4c3a-b0c3-ea4bb7a52265_48a865a3-9a57-4c3a-b0c3-ea4bb7a52265_msg_1755400518833_tjspaimi)
+            
             parts = client_id.split('_')
-            if len(parts) >= 4:
-                if client_id.startswith('dynamic_'):
-                    # dynamic_user_id_timestamp_random
-                    user_id = parts[1]
-                    session_id = client_id
+            
+            if client_id.startswith('dynamic_'):
+                # dynamic_user_id_timestamp_random
+                user_id = parts[1]
+                session_id = client_id
+                logger.info(f"🔍 动态会话格式 - user_id: {user_id}, session_id: {session_id}")
+            elif len(parts) >= 4 and '_msg_' in client_id:
+                # 检查是否是 user_id + "_" + real_session_id 的格式
+                msg_index = client_id.find('_msg_')
+                if msg_index > 0:
+                    # 找到第一个用户ID（UUID格式）
+                    first_part_end = client_id.find('_', 36)  # UUID是36个字符
+                    if first_part_end > 0 and first_part_end < msg_index:
+                        user_id = client_id[:first_part_end]
+                        session_id = client_id[first_part_end + 1:]  # 去掉前缀的用户ID和下划线
+                        logger.info(f"🔍 复合格式 - user_id: {user_id}, session_id: {session_id}")
+                    else:
+                        # 可能是直接的会话ID
+                        user_id = parts[0]
+                        session_id = client_id
+                        logger.info(f"🔍 直接会话ID - user_id: {user_id}, session_id: {session_id}")
                 else:
-                    # user_id_session_timestamp_random
+                    # 普通格式
                     user_id = parts[0]
                     session_id = client_id
+                    logger.info(f"🔍 普通格式 - user_id: {user_id}, session_id: {session_id}")
             else:
                 # 兼容旧格式
                 user_id = client_id
                 session_id = client_id
+                logger.info(f"🔍 兼容格式 - user_id: {user_id}, session_id: {session_id}")
             
+            logger.info(f"✅ 解析结果 - user_id: {user_id}, session_id: {session_id}")
             return user_id, session_id
+            
         except Exception as e:
-            logger.warning(f"⚠️ 解析client_id失败: {client_id}, 使用默认值")
+            logger.warning(f"⚠️ 解析client_id失败: {client_id}, 错误: {e}")
             return client_id, client_id
     
     def disconnect(self, client_id: str):
