@@ -123,38 +123,37 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'SET_ERROR', payload: null })
         console.log('WebSocket 连接已建立')
         
-        // 发送选中的导师信息到后端
-        const selectedMentors = localStorage.getItem('selectedMentors')
-        const dynamicSessionId = localStorage.getItem('dynamicSessionId')
-        
-        if (selectedMentors) {
-          try {
-            const mentors = JSON.parse(selectedMentors)
-            const mentorIds = mentors.map((mentor: any) => mentor.id)
-            console.log('🎯 发送选中的导师信息到后端:', mentorIds)
-            console.log('📋 导师详细信息:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
-            
-            // 检查是否为动态导师
-            const isDynamic = mentors.some((m: any) => m.isDynamic)
-            if (isDynamic && dynamicSessionId) {
-              console.log('🎯 使用动态导师会话:', dynamicSessionId)
-              // 对于动态导师，也需要发送导师ID
-              wsRef.current?.send(JSON.stringify({
-                type: 'set_selected_mentors',
-                mentors: mentorIds
-              }))
-            } else {
-              wsRef.current?.send(JSON.stringify({
-                type: 'set_selected_mentors',
-                mentors: mentorIds
-              }))
+        // 延迟发送导师信息，确保 WebSocket 连接完全建立
+        setTimeout(() => {
+          // 发送选中的导师信息到后端
+          const selectedMentors = localStorage.getItem('selectedMentors')
+          const dynamicSessionId = localStorage.getItem('dynamicSessionId')
+          
+          if (selectedMentors) {
+            try {
+              const mentors = JSON.parse(selectedMentors)
+              const mentorIds = mentors.map((mentor: any) => mentor.id)
+              console.log('🎯 发送选中的导师信息到后端:', mentorIds)
+              console.log('📋 导师详细信息:', mentors.map((m: any) => ({ id: m.id, name: m.name })))
+              
+              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                const message = {
+                  type: 'set_selected_mentors',
+                  mentors: mentorIds
+                }
+                console.log('📤 发送导师选择消息:', message)
+                wsRef.current.send(JSON.stringify(message))
+                console.log('✅ 导师选择消息发送成功')
+              } else {
+                console.error('❌ WebSocket 未连接，无法发送导师信息')
+              }
+            } catch (error) {
+              console.error('❌ 解析选中的导师信息失败:', error)
             }
-          } catch (error) {
-            console.error('❌ 解析选中的导师信息失败:', error)
+          } else {
+            console.log('⚠️ 未找到选中的导师信息')
           }
-        } else {
-          console.log('⚠️ 未找到选中的导师信息')
-        }
+        }, 500) // 延迟 500ms 确保连接稳定
       }
 
       wsRef.current.onmessage = (event) => {
@@ -253,6 +252,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             case 'multi_agent_response':
               console.log('🤖 收到多智能体回复:', data)
               console.log(`📊 智能体信息: ID=${data.agent_id}, Name=${data.agent_name}, Order=${data.order}`)
+              console.log(`📝 消息内容: ${data.content}`)
               console.log(`🔢 当前消息总数: ${state.messages.length}`)
               
               // 只有收到第一个回复时停止打字指示器
@@ -261,53 +261,59 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('⏹️ 停止打字指示器 (第一个回复)')
               }
               
+              const newMessage = {
+                id: generateId(),
+                type: 'multi_agent_response', // 保持消息类型为multi_agent_response
+                content: data.content,
+                timestamp: data.timestamp || new Date().toISOString(),
+                agent_id: data.agent_id,
+                agent_name: data.agent_name,
+                order: data.order,
+                isMultiAgent: true,
+                agent: (() => {
+                  // 优先使用动态导师信息
+                  const selectedMentors = localStorage.getItem('selectedMentors');
+                  if (selectedMentors) {
+                    try {
+                      const mentors = JSON.parse(selectedMentors);
+                      const mentor = mentors.find((m: any) => m.id === data.agent_id);
+                      if (mentor) {
+                        console.log('✅ 找到动态导师信息:', mentor);
+                        return {
+                          id: mentor.id,
+                          name: mentor.name,
+                          description: mentor.title,
+                          color: mentor.color
+                        };
+                      }
+                    } catch (error) {
+                      console.warn('解析动态导师信息失败，使用默认信息:', error);
+                    }
+                  }
+                  
+                  // 兜底：使用默认导师信息
+                  console.log('⚠️ 未找到动态导师信息，使用默认信息');
+                  return {
+                    id: data.agent_id,
+                    name: data.agent_name || '未知智能体',
+                    description: data.agent_id === 'buffett' ? '价值投资大师' : 
+                                data.agent_id === 'soros' ? '宏观投资大师' : 
+                                data.agent_id === 'munger' ? '多元思维专家' :
+                                data.agent_id === 'krugman' ? '宏观经济专家' : '投资导师',
+                    color: data.agent_id === 'buffett' ? '#3B82F6' : 
+                           data.agent_id === 'soros' ? '#10B981' : 
+                           data.agent_id === 'munger' ? '#8B5CF6' :
+                           data.agent_id === 'krugman' ? '#F59E0B' : '#6B7280'
+                  };
+                })()
+              }
+              
+              console.log('➕ 准备添加消息到状态:', newMessage)
               dispatch({
                 type: 'ADD_MESSAGE',
-                payload: {
-                  id: generateId(),
-                  type: 'multi_agent_response', // 保持消息类型为multi_agent_response
-                  content: data.content,
-                  timestamp: data.timestamp || new Date().toISOString(),
-                  agent_id: data.agent_id,
-                  agent_name: data.agent_name,
-                  order: data.order,
-                  isMultiAgent: true,
-                  agent: (() => {
-                    // 优先使用动态导师信息
-                    const selectedMentors = localStorage.getItem('selectedMentors');
-                    if (selectedMentors) {
-                      try {
-                        const mentors = JSON.parse(selectedMentors);
-                        const mentor = mentors.find((m: any) => m.id === data.agent_id);
-                        if (mentor) {
-                          return {
-                            id: mentor.id,
-                            name: mentor.name,
-                            description: mentor.title,
-                            color: mentor.color
-                          };
-                        }
-                      } catch (error) {
-                        console.warn('解析动态导师信息失败，使用默认信息:', error);
-                      }
-                    }
-                    
-                    // 兜底：使用默认导师信息
-                    return {
-                      id: data.agent_id,
-                      name: data.agent_name || '未知智能体',
-                      description: data.agent_id === 'buffett' ? '价值投资大师' : 
-                                  data.agent_id === 'soros' ? '宏观投资大师' : 
-                                  data.agent_id === 'munger' ? '多元思维专家' :
-                                  data.agent_id === 'krugman' ? '宏观经济专家' : '投资导师',
-                      color: data.agent_id === 'buffett' ? '#3B82F6' : 
-                             data.agent_id === 'soros' ? '#10B981' : 
-                             data.agent_id === 'munger' ? '#8B5CF6' :
-                             data.agent_id === 'krugman' ? '#F59E0B' : '#6B7280'
-                    };
-                  })()
-                }
+                payload: newMessage
               })
+              console.log('✅ 消息已添加到状态')
               
               // 初始化语音队列条目为等待状态
               speechQueueRef.current.set(data.order, {

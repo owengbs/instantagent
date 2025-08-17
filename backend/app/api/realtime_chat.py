@@ -701,14 +701,42 @@ async def handle_realtime_message(client_id: str, message: dict):
     elif message_type == "set_selected_mentors":
         # 设置选中的导师
         selected_mentors = message.get("mentors", [])
-        if client_id in realtime_manager.user_sessions:
-            realtime_manager.user_sessions[client_id]["selected_mentors"] = selected_mentors
-            logger.info(f"🎯 设置选中的导师: client_id={client_id}, mentors={selected_mentors}")
-            await realtime_manager.send_message(client_id, {
-                "type": "mentors_set",
-                "mentors": selected_mentors,
-                "timestamp": datetime.now().isoformat()
-            })
+        logger.info(f"🎯 收到设置导师请求: client_id={client_id}, mentors={selected_mentors}")
+        
+        # 确保会话存在
+        if client_id not in realtime_manager.user_sessions:
+            logger.warning(f"⚠️ 会话不存在，创建新会话: {client_id}")
+            # 解析用户ID和会话ID
+            user_id, session_id = realtime_manager._parse_client_id(client_id)
+            
+            # 创建会话
+            if client_id.startswith("dynamic_"):
+                session_id = client_id
+            else:
+                session_id = "realtime_" + client_id
+                
+            realtime_manager.user_sessions[client_id] = {
+                "voice": "Cherry",
+                "buffer": "",
+                "is_speaking": False,
+                "session_id": session_id,
+                "asr_model": "paraformer-realtime-v2",
+                "asr_language": "zh-CN",
+                "is_listening": False,
+                "speech_buffer": "",
+                "last_speech_time": None
+            }
+        
+        # 设置选中的导师
+        realtime_manager.user_sessions[client_id]["selected_mentors"] = selected_mentors
+        logger.info(f"✅ 成功设置选中的导师: client_id={client_id}, mentors={selected_mentors}")
+        logger.info(f"🔍 当前会话数据: {realtime_manager.user_sessions[client_id]}")
+        
+        await realtime_manager.send_message(client_id, {
+            "type": "mentors_set",
+            "mentors": selected_mentors,
+            "timestamp": datetime.now().isoformat()
+        })
     
     elif message_type == "generate_dynamic_mentors":
         # 生成动态导师
