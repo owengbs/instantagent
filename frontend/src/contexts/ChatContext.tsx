@@ -110,14 +110,29 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 使用用户管理器生成连接ID
       const user = userManager.getCurrentUser()
       const dynamicSessionId = localStorage.getItem('dynamicSessionId')
-      const sessionId = dynamicSessionId || state.sessionId
+      const isDynamic = localStorage.getItem('isDynamic')
+      
+      console.log('🔍 WebSocket连接准备:')
+      console.log('  - localStorage.dynamicSessionId:', dynamicSessionId)
+      console.log('  - localStorage.isDynamic:', isDynamic)
+      console.log('  - state.sessionId:', state.sessionId)
+      
+      // 确保使用正确的sessionId - 优先使用localStorage中的dynamicSessionId
+      let sessionId: string;
+      if (dynamicSessionId && dynamicSessionId.trim() !== '') {
+        sessionId = dynamicSessionId;
+        console.log('✅ 使用localStorage中的dynamicSessionId:', sessionId)
+      } else {
+        sessionId = state.sessionId;
+        console.log('⚠️ localStorage中无dynamicSessionId，使用state.sessionId:', sessionId)
+      }
       
       // 生成用户特定的连接ID
       const connectionId = userManager.generateConnectionId(sessionId)
       const wsUrl = API_CONFIG.endpoints.chatWs(connectionId)
       
       console.log('🔗 WebSocket连接信息:')
-      console.log('  - SessionID:', sessionId)
+      console.log('  - 最终SessionID:', sessionId)
       console.log('  - ConnectionID:', connectionId)
       console.log('  - WebSocket URL:', wsUrl)
       console.log('  - 当前域名:', window.location.host)
