@@ -24,6 +24,35 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
   const [sessionId, setSessionId] = useState('')
   const [error, setError] = useState('')
 
+  // 组件加载时检查是否有已存在的动态导师数据
+  React.useEffect(() => {
+    const existingDynamicSessionId = localStorage.getItem('dynamicSessionId')
+    const existingMentors = localStorage.getItem('selectedMentors')
+    const existingTopic = localStorage.getItem('dynamicTopic')
+    const isDynamic = localStorage.getItem('isDynamic') === 'true'
+    
+    if (existingDynamicSessionId && existingMentors && isDynamic) {
+      try {
+        const mentors: Mentor[] = JSON.parse(existingMentors)
+        if (mentors.length > 0 && mentors.some(m => m.isDynamic)) {
+          console.log('🔄 组件加载时发现已有动态导师数据:')
+          console.log('  sessionId:', existingDynamicSessionId)
+          console.log('  topic:', existingTopic)
+          console.log('  mentors:', mentors.map(m => ({ id: m.id, name: m.name })))
+          
+          setSessionId(existingDynamicSessionId)
+          setTopic(existingTopic || '')
+          setGeneratedMentors(mentors)
+          setSelectedMentorIds(mentors.map(m => m.id))
+          
+          console.log('✅ 已加载已有的动态导师数据到组件')
+        }
+      } catch (error) {
+        console.error('❌ 加载已有动态导师数据失败:', error)
+      }
+    }
+  }, [])
+
   // 生成会话ID
   const generateSessionId = () => {
     return userManager.generateDynamicSessionId()
@@ -36,9 +65,19 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
       return
     }
 
-    // 防重复生成：如果已经有生成的导师，先确认是否要重新生成
-    if (generatedMentors.length > 0) {
-      const confirmed = window.confirm('您已经生成过导师了，是否要重新生成？这将覆盖之前的导师。')
+    // 防重复生成：检查当前组件状态和localStorage
+    const existingDynamicSessionId = localStorage.getItem('dynamicSessionId')
+    const existingMentors = localStorage.getItem('selectedMentors')
+    const isDynamic = localStorage.getItem('isDynamic') === 'true'
+    
+    // 如果组件已有生成的导师 OR localStorage中有动态导师数据
+    if (generatedMentors.length > 0 || (existingDynamicSessionId && existingMentors && isDynamic)) {
+      console.log('🔍 检测到已有动态导师:')
+      console.log('  当前组件导师数量:', generatedMentors.length)
+      console.log('  localStorage dynamicSessionId:', existingDynamicSessionId)
+      console.log('  localStorage isDynamic:', isDynamic)
+      
+      const confirmed = window.confirm('检测到您已经生成过动态导师了，是否要重新生成？这将覆盖之前的导师。')
       if (!confirmed) {
         return
       }
@@ -48,6 +87,13 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
       setGeneratedMentors([])
       setSelectedMentorIds([])
       setSessionId('')
+      
+      // 清理localStorage中的旧数据
+      localStorage.removeItem('selectedMentors')
+      localStorage.removeItem('dynamicSessionId') 
+      localStorage.removeItem('dynamicTopic')
+      localStorage.removeItem('isDynamic')
+      console.log('🧹 已清理localStorage中的旧动态导师数据')
     }
 
     setIsGenerating(true)
