@@ -129,11 +129,23 @@ class UserManager {
 
   /**
    * 生成用户专属的WebSocket连接ID
+   * 对于动态会话，直接使用sessionId作为连接ID
+   * 对于普通会话，使用 user.id_session 格式
    */
   generateConnectionId(sessionId?: string): string {
     const user = this.getCurrentUser()
     const session = sessionId || this.currentSession?.sessionId || 'default'
-    return `${user.id}_${session}`
+    
+    // 如果是动态会话（包含_msg_），直接使用sessionId
+    if (this.isDynamicSession(session)) {
+      console.log('🔗 动态会话，直接使用sessionId作为连接ID:', session)
+      return session
+    }
+    
+    // 普通会话使用复合格式
+    const connectionId = `${user.id}_${session}`
+    console.log('🔗 普通会话，使用复合连接ID:', connectionId)
+    return connectionId
   }
 
   /**

@@ -51,7 +51,13 @@ const GenerateMentorsPage: React.FC = () => {
       console.log('🆕 生成新的sessionId:', sessionId)
 
       // 通过WebSocket发送生成请求
-      const ws = new WebSocket(API_CONFIG.endpoints.chatWs(sessionId))
+      // 使用userManager生成正确的连接ID
+      const connectionId = userManager.generateConnectionId(sessionId)
+      console.log('🔗 生成导师页面WebSocket连接信息:')
+      console.log('  sessionId:', sessionId)
+      console.log('  connectionId:', connectionId)
+      
+      const ws = new WebSocket(API_CONFIG.endpoints.chatWs(connectionId))
       
       ws.onopen = () => {
         ws.send(JSON.stringify({
