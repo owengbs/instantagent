@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Mic, Send, Square, Clock } from 'lucide-react'
+import { ArrowLeft, Mic, Send, Square, Clock, X } from 'lucide-react'
 import MessageBubble from './MessageBubble'
+import MeetingSummaryGenerator from './MeetingSummaryGenerator'
+import SimpleMeetingSummary from './SimpleMeetingSummary'
 import { useChat } from '../contexts/ChatContext'
 import { Mentor } from '../types/mentor'
 
@@ -18,27 +20,32 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
   
   const [selectedMentors, setSelectedMentors] = useState<Mentor[]>([])
   const [topic, setTopic] = useState<string>('')
+  const [sessionId, setSessionId] = useState<string>('')
   const [inputMessage, setInputMessage] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
+  const [startTime, setStartTime] = useState<Date>(new Date())
+  const [showSummaryGenerator, setShowSummaryGenerator] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
+  const [summaryData, setSummaryData] = useState<any>(null)
 
   // 从路由状态或本地存储加载信息
   useEffect(() => {
     const routeState = location.state as any
     let mentors: Mentor[] = []
     let currentTopic = ''
-    let sessionId = ''
+    let currentSessionId = ''
 
     console.log('🔍 ChatContainer初始化，检查路由状态:', routeState)
 
     if (routeState?.mentors) {
       mentors = routeState.mentors
       currentTopic = routeState.topic || ''
-      sessionId = routeState.sessionId || ''
+      currentSessionId = routeState.sessionId || ''
       console.log('✅ 从路由状态恢复数据:')
       console.log('  mentors:', mentors.map(m => ({ id: m.id, name: m.name })))
       console.log('  topic:', currentTopic)
-      console.log('  sessionId:', sessionId)
+      console.log('  sessionId:', currentSessionId)
     } else {
       // 从localStorage恢复
       try {
@@ -53,13 +60,13 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
           currentTopic = savedTopic
         }
         if (savedSessionId) {
-          sessionId = savedSessionId
+          currentSessionId = savedSessionId
         }
         
         console.log('🔄 从localStorage恢复数据:')
         console.log('  mentors:', mentors.map(m => ({ id: m.id, name: m.name })))
         console.log('  topic:', currentTopic)
-        console.log('  sessionId:', sessionId)
+        console.log('  sessionId:', currentSessionId)
       } catch (error) {
         console.error('恢复聊天数据失败:', error)
       }
@@ -74,9 +81,11 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
 
     setSelectedMentors(mentors)
     setTopic(currentTopic)
+    setSessionId(currentSessionId)
+    setStartTime(new Date())
     
     // 确保WebSocket连接使用正确的会话ID并发送导师选择
-    if (sessionId && mentors.length > 0) {
+    if (currentSessionId && mentors.length > 0) {
       console.log('📤 聊天页面立即发送导师选择到后端')
       // 延迟一下确保WebSocket连接已建立
       setTimeout(() => {
@@ -129,10 +138,53 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
     return () => clearInterval(interval)
   }, [isRecording])
 
+  // 实时更新讨论时长
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // 强制重新渲染以更新时间显示
+      setStartTime(prev => prev)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // 格式化持续时间
+  const formatDuration = (startTime: Date) => {
+    const now = new Date()
+    const diffMs = now.getTime() - startTime.getTime()
+    const diffMins = Math.floor(diffMs / (1000 * 60))
+    const diffSecs = Math.floor((diffMs % (1000 * 60)) / 1000)
+    return `${diffMins}:${diffSecs.toString().padStart(2, '0')}`
+  }
+
+  // 处理结束讨论
+  const handleEndDiscussion = () => {
+    if (messages.length === 0) {
+      // 如果没有消息，直接返回首页
+      navigate('/')
+      return
+    }
+    
+    // 显示会议总结生成器
+    setShowSummaryGenerator(true)
+  }
+
+  // 处理总结生成完成
+  const handleSummaryGenerated = (summary: any) => {
+    setSummaryData(summary)
+    setShowSummaryGenerator(false)
+    setShowSummary(true)
+  }
+
+  // 处理总结关闭
+  const handleSummaryClose = () => {
+    setShowSummary(false)
+    navigate('/')
   }
 
   return (
@@ -192,8 +244,32 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
 
       {/* 右侧聊天区域 */}
       <div className="flex-1 flex flex-col">
+        {/* 顶部导航栏 */}
+        <div className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+          <div className="text-center flex-1">
+            <h1 className="text-xl font-semibold text-white">投资大师圆桌会</h1>
+            {topic && (
+              <p className="text-sm text-gray-400 mt-1">{topic}</p>
+            )}
+          </div>
+          <div className="flex items-center space-x-4">
+            {/* 连接状态指示器 */}
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-sm text-gray-400">{formatDuration(startTime)}</span>
+            </div>
+            {/* 结束按钮 */}
+            <button
+              onClick={handleEndDiscussion}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
+            >
+              结束
+            </button>
+          </div>
+        </div>
+
         {/* 聊天消息区域 */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
@@ -289,6 +365,28 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
           </div>
         </div>
       </div>
+
+      {/* 会议总结生成器 */}
+      {showSummaryGenerator && (
+        <MeetingSummaryGenerator
+          sessionId={sessionId}
+          topic={topic}
+          messages={messages}
+          onSummaryGenerated={handleSummaryGenerated}
+          onClose={() => setShowSummaryGenerator(false)}
+        />
+      )}
+
+      {/* 会议总结显示 */}
+      {showSummary && summaryData && (
+        <SimpleMeetingSummary
+          summary={summaryData}
+          topic={topic}
+          participants={['我', ...selectedMentors.map(m => m.name)]}
+          duration={formatDuration(startTime)}
+          onClose={handleSummaryClose}
+        />
+      )}
     </div>
   )
 }
