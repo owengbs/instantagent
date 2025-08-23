@@ -17,16 +17,12 @@ const HomePage: React.FC = () => {
 
   const handleStartDiscussion = () => {
     if (!topic.trim()) {
-      // 如果没有输入话题，使用示例问题
-      const randomExample = exampleQuestions[Math.floor(Math.random() * exampleQuestions.length)]
-      setTopic(randomExample)
-      // 延迟一下让用户看到填充的内容
-      setTimeout(() => {
-        navigate('/mentor-selection', { state: { topic: randomExample } })
-      }, 500)
-    } else {
-      navigate('/mentor-selection', { state: { topic: topic.trim() } })
+      // 如果没有输入话题，显示提示
+      alert('请先输入您想讨论的投资话题')
+      return
     }
+    // 直接跳转到动态导师生成页面
+    navigate('/generate-mentors', { state: { topic: topic.trim() } })
   }
 
   const handleExampleClick = (example: string) => {

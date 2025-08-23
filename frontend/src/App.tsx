@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import MultiAgentChatContainer from './components/MultiAgentChatContainer.tsx'
+import ChatContainer from './components/ChatContainer.tsx'
 
 import LoadingScreen from './components/LoadingScreen.tsx'
 import VoiceTest from './components/VoiceTest.tsx'
 import VoiceChatInput from './components/VoiceChatInput.tsx'
 import HomePage from './components/HomePage.tsx'
+import GenerateMentorsPage from './components/GenerateMentorsPage.tsx'
 import MentorSelection from './components/MentorSelection.tsx'
 import { DynamicMentorTest } from './components/DynamicMentorTest'
 import { MentorManagement } from './components/MentorManagement'
@@ -44,16 +45,9 @@ const ChatInterface: React.FC = () => {
           initial={{ opacity: 0, scale: 1.05 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="h-screen flex flex-col"
+          className="h-screen"
         >
-          {/* 顶部Header移除以满足首页精简化要求 */}
-          <div className="flex-1 overflow-hidden">
-            <MultiAgentChatContainer />
-          </div>
-          {/* 语音输入区 */}
-          <div className="p-4 bg-white/80">
-            <VoiceChatInput onSendMessage={sendMessage} />
-          </div>
+          <ChatContainer />
         </motion.div>
       )}
     </AnimatePresence>
@@ -99,6 +93,7 @@ function App() {
           {/* 路由内容 */}
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/generate-mentors" element={<GenerateMentorsPage />} />
             <Route path="/mentor-selection" element={<MentorSelection />} />
             <Route path="/chat" element={<ChatInterface />} />
             <Route path="/test" element={<DynamicMentorTest />} />
