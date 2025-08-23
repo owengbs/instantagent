@@ -137,24 +137,54 @@ const GenerateMentorsPage: React.FC = () => {
 
     const selectedMentors = generatedMentors.filter(mentor => selectedMentorIds.includes(mentor.id))
     
+    console.log('🚀 开始对话准备')
+    console.log('  当前sessionId:', sessionId)
+    console.log('  当前topic:', topic)
+    console.log('  selectedMentorIds:', selectedMentorIds)
+    console.log('  generatedMentors:', generatedMentors.map(m => ({ id: m.id, name: m.name })))
+    console.log('✅ 最终选择的导师详情:')
+    selectedMentors.forEach((mentor, index) => {
+      console.log(`  ${index + 1}. ${mentor.name} (${mentor.id})`)
+      console.log(`     提取的sessionId: ${mentor.id.match(/_msg_(\d+)_/)?.[1]}`)
+    })
+    
     // 保存到localStorage
     try {
+      // 先清理之前的动态导师信息，避免冲突
+      console.log('🧹 清理之前的localStorage数据')
       localStorage.removeItem('selectedMentors')
       localStorage.removeItem('dynamicSessionId') 
       localStorage.removeItem('dynamicTopic')
       localStorage.removeItem('isDynamic')
       
+      const localStorageData = {
+        selectedMentors: selectedMentors,
+        dynamicSessionId: sessionId,
+        dynamicTopic: topic,
+        isDynamic: 'true'
+      }
+      console.log('💾 保存到localStorage的数据:', localStorageData)
+      
       localStorage.setItem('selectedMentors', JSON.stringify(selectedMentors))
       localStorage.setItem('dynamicSessionId', sessionId)
       localStorage.setItem('dynamicTopic', topic)
       localStorage.setItem('isDynamic', 'true')
+      
+      // 验证保存结果
+      console.log('✅ localStorage保存验证:')
+      console.log('  selectedMentors:', localStorage.getItem('selectedMentors'))
+      console.log('  dynamicSessionId:', localStorage.getItem('dynamicSessionId'))
+      console.log('  dynamicTopic:', localStorage.getItem('dynamicTopic'))
+      console.log('  isDynamic:', localStorage.getItem('isDynamic'))
     } catch (e) {
-      console.warn('localStorage 持久化失败:', e)
+      console.warn('localStorage 持久化动态导师失败（不影响继续导航）:', e)
     }
 
     // 立即发送导师选择信息到后端
+    console.log('📤 立即发送导师选择到后端')
     sendMentorSelection(selectedMentors)
 
+    console.log('🔄 开始跳转到聊天页面')
     // 跳转到聊天页面
     navigate('/chat', { 
       state: { 

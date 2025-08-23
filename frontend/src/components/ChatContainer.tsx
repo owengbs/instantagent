@@ -12,7 +12,7 @@ interface ChatContainerProps {
 const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { state, sendMessage } = useChat()
+  const { state, sendMessage, sendMentorSelection } = useChat()
   const { messages, isTyping, isConnected } = state
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
@@ -27,15 +27,24 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
     const routeState = location.state as any
     let mentors: Mentor[] = []
     let currentTopic = ''
+    let sessionId = ''
+
+    console.log('🔍 ChatContainer初始化，检查路由状态:', routeState)
 
     if (routeState?.mentors) {
       mentors = routeState.mentors
       currentTopic = routeState.topic || ''
+      sessionId = routeState.sessionId || ''
+      console.log('✅ 从路由状态恢复数据:')
+      console.log('  mentors:', mentors.map(m => ({ id: m.id, name: m.name })))
+      console.log('  topic:', currentTopic)
+      console.log('  sessionId:', sessionId)
     } else {
       // 从localStorage恢复
       try {
         const savedMentors = localStorage.getItem('selectedMentors')
         const savedTopic = localStorage.getItem('dynamicTopic')
+        const savedSessionId = localStorage.getItem('dynamicSessionId')
         
         if (savedMentors) {
           mentors = JSON.parse(savedMentors)
@@ -43,6 +52,14 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
         if (savedTopic) {
           currentTopic = savedTopic
         }
+        if (savedSessionId) {
+          sessionId = savedSessionId
+        }
+        
+        console.log('🔄 从localStorage恢复数据:')
+        console.log('  mentors:', mentors.map(m => ({ id: m.id, name: m.name })))
+        console.log('  topic:', currentTopic)
+        console.log('  sessionId:', sessionId)
       } catch (error) {
         console.error('恢复聊天数据失败:', error)
       }
@@ -50,12 +67,23 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
 
     if (mentors.length === 0) {
       // 如果没有导师信息，返回首页
+      console.warn('⚠️ 没有导师信息，返回首页')
       navigate('/')
       return
     }
 
     setSelectedMentors(mentors)
     setTopic(currentTopic)
+    
+    // 确保WebSocket连接使用正确的会话ID并发送导师选择
+    if (sessionId && mentors.length > 0) {
+      console.log('📤 聊天页面立即发送导师选择到后端')
+      // 延迟一下确保WebSocket连接已建立
+      setTimeout(() => {
+        console.log('📤 发送导师选择信息:', mentors)
+        sendMentorSelection(mentors)
+      }, 1000)
+    }
   }, [location, navigate])
 
   // 自动滚动到底部
