@@ -8,10 +8,12 @@ import MentorCard from './MentorCard'
 
 import DynamicMentorGenerator from './DynamicMentorGenerator'
 import { useMentors } from '../hooks/useMentors'
+import { useChat } from '../contexts/ChatContext'
 
 const MentorSelection: React.FC = () => {
   const navigate = useNavigate()
   const { getEnabledMentors, loading: mentorsLoading, error: mentorsError } = useMentors()
+  const { sendMentorSelection } = useChat()
   
   // 优先使用后端数据，如果失败则使用默认数据
   const [availableMentors, setAvailableMentors] = useState<Mentor[]>(DEFAULT_MENTORS)
@@ -83,6 +85,10 @@ const MentorSelection: React.FC = () => {
     console.log('🎯 开始圆桌会议，选中的导师:', selectedMentors.map(m => ({ id: m.id, name: m.name })))
     console.log('🔑 生成的sessionId:', defaultSessionId)
     console.log('📋 设置的主题:', defaultTopic)
+    
+    // 立即发送导师选择信息到后端
+    console.log('📤 立即发送导师选择到后端')
+    sendMentorSelection(selectedMentors)
     
     // 导航到聊天页面
     navigate('/chat')

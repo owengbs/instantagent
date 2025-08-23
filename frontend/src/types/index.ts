@@ -104,6 +104,7 @@ export interface ChatContextType {
   onNewAIResponse?: (response: string) => void
   setOnNewAIResponse: (callback: (response: string) => void) => void
   onSpeechEnd: () => void
+  sendMentorSelection: (mentors: any[]) => void
 }
 
 // 组件props类型

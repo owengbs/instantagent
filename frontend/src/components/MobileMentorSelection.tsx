@@ -6,10 +6,12 @@ import { Mentor } from '../types/mentor'
 import { DEFAULT_MENTORS } from '../config/mentors'
 import DynamicMentorGenerator from './DynamicMentorGenerator'
 import { useMentors } from '../hooks/useMentors'
+import { useChat } from '../contexts/ChatContext'
 
 const MobileMentorSelection: React.FC = () => {
   const navigate = useNavigate()
   const { getEnabledMentors, loading: mentorsLoading, error: mentorsError } = useMentors()
+  const { sendMentorSelection } = useChat()
   
   const [availableMentors, setAvailableMentors] = useState<Mentor[]>(DEFAULT_MENTORS)
   const [selectedMentors, setSelectedMentors] = useState<Mentor[]>([])
@@ -56,6 +58,10 @@ const MobileMentorSelection: React.FC = () => {
       localStorage.setItem('selectedMentors', JSON.stringify(selectedMentors))
       console.log('📱 移动端开始圆桌会议，选中的导师:', selectedMentors.map(m => ({ id: m.id, name: m.name })))
       console.log('💾 移动端已存储到localStorage:', localStorage.getItem('selectedMentors'))
+      
+      // 立即发送导师选择信息到后端
+      console.log('📤 移动端立即发送导师选择到后端')
+      sendMentorSelection(selectedMentors)
       
       // 检查存储是否成功
       const stored = localStorage.getItem('selectedMentors')
@@ -224,4 +230,6 @@ const MobileMentorSelection: React.FC = () => {
 }
 
 export default MobileMentorSelection
+
+
 

@@ -61,21 +61,92 @@ class RealtimeChatManager:
             session_id = client_id
         else:
             session_id = "realtime_" + client_id
+        
+        # 检查是否已有会话数据（重连情况）
+        if client_id in self.user_sessions:
+            # 重连情况，恢复连接状态但保留会话数据
+            logger.info(f"🔄 检测到重连，恢复现有会话: {client_id}")
+            session = self.user_sessions[client_id]
+            session["is_speaking"] = False
+            session["is_listening"] = False
+            session["buffer"] = ""
+            # 保留selected_mentors, dynamic_mentors等重要数据
+        else:
+            # 新连接，创建新会话
+            logger.info(f"🆕 创建新会话: {client_id}")
+            self.user_sessions[client_id] = {
+                "voice": "Cherry",
+                "buffer": "",
+                "is_speaking": False,
+                "session_id": session_id,
+                "asr_model": "paraformer-realtime-v2",
+                "asr_language": "zh-CN",
+                "is_listening": False,
+                "speech_buffer": "",  # 语音识别缓冲区
+                "last_speech_time": None
+            }
             
-        self.user_sessions[client_id] = {
-            "voice": "Cherry",
-            "buffer": "",
-            "is_speaking": False,
-            "session_id": session_id,
-            "asr_model": "paraformer-realtime-v2",
-            "asr_language": "zh-CN",
-            "is_listening": False,
-            "speech_buffer": "",  # 语音识别缓冲区
-            "last_speech_time": None
-        }
+            # 尝试恢复该会话的动态导师信息
+            self._restore_session_mentors(client_id, user_id, session_id)
         self.result_queues[client_id] = queue.Queue()
         logger.info(f"🔌 实时对话客户端连接: {client_id} (用户: {user_id})")
     
+    def _restore_session_mentors(self, client_id: str, user_id: str, session_id: str):
+        """恢复会话的动态导师信息"""
+        try:
+            # 从agent_manager中查找该会话的动态导师
+            session_mentors = []
+            
+            # 检查是否有该会话的动态导师
+            if session_id in agent_manager.dynamic_mentors:
+                session_mentors = agent_manager.dynamic_mentors[session_id]
+                logger.info(f"🔄 找到会话 {session_id} 的动态导师: {session_mentors}")
+            else:
+                # 尝试查找包含该session_id的动态导师
+                for stored_session_id, mentors in agent_manager.dynamic_mentors.items():
+                    if session_id in stored_session_id or stored_session_id in session_id:
+                        session_mentors = mentors
+                        logger.info(f"🔄 通过模糊匹配找到会话动态导师: {stored_session_id} -> {session_mentors}")
+                        break
+            
+            if session_mentors:
+                # 恢复到user_sessions
+                self.user_sessions[client_id]["dynamic_mentors"] = session_mentors
+                
+                # 构建完整的导师信息（从agent_manager中获取）
+                full_mentors = []
+                for mentor_id in session_mentors:
+                    if mentor_id in agent_manager.agents:
+                        agent = agent_manager.agents[mentor_id]
+                        config = agent_manager.agent_configs.get(mentor_id, {})
+                        
+                        # 构建导师信息字典
+                        mentor_info = {
+                            'id': mentor_id,
+                            'name': config.get('name', agent.name if hasattr(agent, 'name') else mentor_id),
+                            'title': getattr(agent, 'title', ''),
+                            'description': config.get('description', ''),
+                            'voice': config.get('voice', 'Cherry'),
+                            'expertise': getattr(agent, 'expertise', []),
+                            'personalityTraits': getattr(agent, 'personality_traits', []),
+                            'investmentStyle': getattr(agent, 'investment_style', ''),
+                            'famousQuotes': getattr(agent, 'famous_quotes', []),
+                            'isCustom': False,
+                            'isDynamic': True
+                        }
+                        full_mentors.append(mentor_info)
+                
+                if full_mentors:
+                    self.user_sessions[client_id]["selected_mentors"] = full_mentors
+                    logger.info(f"✅ 恢复会话 {session_id} 的 {len(full_mentors)} 位动态导师")
+                else:
+                    logger.warning(f"⚠️ 会话 {session_id} 的动态导师已不存在于agent_manager中")
+            else:
+                logger.info(f"🔍 会话 {session_id} 没有找到动态导师")
+                
+        except Exception as e:
+            logger.error(f"❌ 恢复会话导师信息失败: {e}")
+
     def _parse_client_id(self, client_id: str) -> tuple[str, str]:
         """解析client_id获取用户ID和会话ID"""
         try:
@@ -141,8 +212,18 @@ class RealtimeChatManager:
         
         if client_id in self.active_connections:
             del self.active_connections[client_id]
+        
+        # 保留user_sessions以便重连时恢复，但清理一些临时状态
         if client_id in self.user_sessions:
-            del self.user_sessions[client_id]
+            session = self.user_sessions[client_id]
+            # 重置一些临时状态，但保留重要信息如selected_mentors, dynamic_mentors等
+            session["is_speaking"] = False
+            session["is_listening"] = False
+            session["buffer"] = ""
+            session["speech_buffer"] = ""
+            session["last_speech_time"] = None
+            logger.info(f"🔄 保留会话数据以便重连恢复: {client_id}")
+        
         if client_id in self.result_queues:
             del self.result_queues[client_id]
         logger.info(f"🔌 实时对话客户端断开: {client_id}")
@@ -315,9 +396,27 @@ class RealtimeChatManager:
             
             # 兼容原有系统
             session = self.user_sessions.get(client_id, {})
-            if client_id.startswith("dynamic_"):
-                session_id = client_id
-                logger.info(f"🎯 使用动态会话ID: {session_id}")
+            
+            # 对于动态会话，需要正确提取session_id
+            if "_msg_" in session_id:
+                # 检查是否是动态导师会话
+                # 动态导师的session_id格式: user_id_msg_timestamp_suffix
+                # 但client_id格式可能是: user_id_user_id_msg_timestamp_suffix
+                
+                # 尝试从client_id中提取正确的session_id
+                msg_index = client_id.find('_msg_')
+                if msg_index > 0:
+                    # 查找第一个完整的UUID（36个字符）
+                    first_uuid_end = 36
+                    if len(client_id) > first_uuid_end and client_id[first_uuid_end] == '_':
+                        # 检查是否是重复的用户ID格式
+                        potential_session = client_id[first_uuid_end + 1:]
+                        if potential_session.startswith(user_id):
+                            # 是重复格式，使用去掉重复用户ID的部分
+                            session_id = potential_session
+                            logger.info(f"🔄 修正动态会话ID: {client_id} -> {session_id}")
+                
+                logger.info(f"🎯 最终使用的会话ID: {session_id}")
             
             # 详细调试日志
             logger.info(f"🔍 处理对话 - client_id: {client_id}")
@@ -336,11 +435,25 @@ class RealtimeChatManager:
             if dynamic_mentors:
                 # 如果有动态导师，检查可用性
                 available_dynamic_mentors = [mid for mid in dynamic_mentors if mid in agent_manager.agents]
+                logger.info(f"🔍 可用的动态导师: {available_dynamic_mentors}")
+                
                 if available_dynamic_mentors:
                     # 如果用户有选择，使用用户选择的可用动态导师
                     if selected_mentors:
+                        # 提取用户选择的导师ID（兼容字典和字符串格式）
+                        user_selected_ids = []
+                        for mentor in selected_mentors:
+                            if isinstance(mentor, dict):
+                                user_selected_ids.append(mentor.get('id', ''))
+                            elif isinstance(mentor, str):
+                                user_selected_ids.append(mentor)
+                        
+                        logger.info(f"🔍 用户选择的导师ID: {user_selected_ids}")
+                        
                         # 检查用户选择的导师是否在可用的动态导师中
-                        user_selected_available = [mid for mid in selected_mentors if mid in available_dynamic_mentors]
+                        user_selected_available = [mid for mid in user_selected_ids if mid and mid in available_dynamic_mentors]
+                        logger.info(f"🔍 用户选择且可用的导师: {user_selected_available}")
+                        
                         if user_selected_available:
                             selected_mentors = user_selected_available
                             logger.info(f"🎯 使用用户选择的动态导师: {selected_mentors}")
@@ -367,11 +480,23 @@ class RealtimeChatManager:
                         logger.error("❌ 连默认导师都不可用！")
                         selected_mentors = []
             elif selected_mentors:
+                # 提取导师ID（兼容字典和字符串格式）
+                mentor_ids = []
+                for mentor in selected_mentors:
+                    if isinstance(mentor, dict):
+                        mentor_ids.append(mentor.get('id', ''))
+                    elif isinstance(mentor, str):
+                        mentor_ids.append(mentor)
+                    else:
+                        logger.warning(f"⚠️ 未知的导师格式: {mentor}")
+                
+                logger.info(f"🔍 提取的导师ID: {mentor_ids}")
+                
                 # 检查用户选择的导师是否可用
-                available_selected = [mid for mid in selected_mentors if mid in agent_manager.agents]
+                available_selected = [mid for mid in mentor_ids if mid and mid in agent_manager.agents]
                 
                 # 检查是否有动态导师
-                dynamic_selected = [mid for mid in selected_mentors if mid.startswith('dynamic_')]
+                dynamic_selected = [mid for mid in mentor_ids if mid and mid.startswith('dynamic_')]
                 
                 if dynamic_selected:
                     # 如果用户选择的是动态导师，检查是否在agent_manager中可用
@@ -381,11 +506,34 @@ class RealtimeChatManager:
                         logger.info(f"🎯 使用前端选择的动态导师: {selected_mentors}")
                     else:
                         logger.warning(f"⚠️ 前端选择的动态导师不可用: {dynamic_selected}")
-                        # 回退到默认导师
-                        default_mentors = ['buffett', 'munger', 'soros']
-                        available_default = [mid for mid in default_mentors if mid in agent_manager.agents]
-                        selected_mentors = available_default
-                        logger.info(f"🔄 回退到默认导师: {selected_mentors}")
+                        logger.info(f"🔍 当前agent_manager中的所有智能体: {list(agent_manager.agents.keys())}")
+                        
+                        # 尝试通过模糊匹配找到对应的动态导师
+                        # 动态导师ID格式: dynamic_{session_id}_{original_id}_{random}
+                        matched_mentors = []
+                        for selected_id in dynamic_selected:
+                            # 提取session_id部分进行匹配
+                            if selected_id.startswith('dynamic_'):
+                                # 从selected_id中提取关键信息
+                                parts = selected_id.split('_')
+                                if len(parts) >= 4:  # dynamic_session_original_random
+                                    # 查找包含相似session信息的动态导师
+                                    for agent_id in agent_manager.agents.keys():
+                                        if agent_id.startswith('dynamic_') and '_msg_' in agent_id:
+                                            # 检查是否是相同用户的动态导师
+                                            if user_id in agent_id and session_id.split('_msg_')[1] in agent_id:
+                                                matched_mentors.append(agent_id)
+                                                logger.info(f"🔄 通过模糊匹配找到动态导师: {selected_id} -> {agent_id}")
+                        
+                        if matched_mentors:
+                            selected_mentors = matched_mentors[:len(dynamic_selected)]  # 限制数量
+                            logger.info(f"✅ 使用模糊匹配的动态导师: {selected_mentors}")
+                        else:
+                            # 回退到默认导师
+                            default_mentors = ['buffett', 'munger', 'soros']
+                            available_default = [mid for mid in default_mentors if mid in agent_manager.agents]
+                            selected_mentors = available_default
+                            logger.info(f"🔄 回退到默认导师: {selected_mentors}")
                 elif available_selected:
                     # 使用前端选择的静态导师
                     selected_mentors = available_selected

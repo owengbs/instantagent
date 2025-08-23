@@ -14,6 +14,7 @@ export interface Mentor {
   investmentStyle: string
   famousQuotes: string[]
   isCustom?: boolean
+  isDynamic?: boolean
   background?: string
   voice?: string
   enabled?: boolean

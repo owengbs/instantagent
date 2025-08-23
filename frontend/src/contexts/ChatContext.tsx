@@ -172,7 +172,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (wsRef.current?.readyState === WebSocket.OPEN) {
                 const message = {
                   type: 'set_selected_mentors',
-                  mentors: mentorIds
+                  mentors: mentors  // 发送完整的导师信息，而不仅仅是ID
                 }
                 console.log('📤 发送导师选择消息:', message)
                 wsRef.current.send(JSON.stringify(message))
@@ -759,6 +759,27 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     onNewAIResponseRef.current = callback
   }, [])
 
+  // 发送导师选择信息到后端
+  const sendMentorSelection = useCallback((mentors: any[]) => {
+    console.log('🎯 发送导师选择到后端:', mentors)
+    
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      try {
+        const message = {
+          type: 'set_selected_mentors',
+          mentors: mentors
+        }
+        console.log('📤 发送导师选择消息:', message)
+        wsRef.current.send(JSON.stringify(message))
+        console.log('✅ 导师选择消息发送成功')
+      } catch (error) {
+        console.error('❌ 发送导师选择失败:', error)
+      }
+    } else {
+      console.warn('⚠️ WebSocket未连接，无法发送导师选择')
+    }
+  }, [])
+
   // 初始化连接
   useEffect(() => {
     connect()
@@ -791,7 +812,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updatePreferences,
     onNewAIResponse: onNewAIResponseRef.current || undefined,
     setOnNewAIResponse,
-    onSpeechEnd
+    onSpeechEnd,
+    sendMentorSelection
   }
 
   return (

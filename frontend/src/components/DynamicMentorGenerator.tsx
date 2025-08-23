@@ -6,6 +6,7 @@ import { API_CONFIG } from '../config/api'
 import { userManager } from '../utils/userManager'
 import { Mentor } from '../types/mentor'
 import MentorCard from './MentorCard'
+import { useChat } from '../contexts/ChatContext'
 
 interface DynamicMentorGeneratorProps {
   onMentorsGenerated: (mentors: Mentor[], topic: string, sessionId: string) => void
@@ -17,6 +18,7 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
   onClose
 }) => {
   const navigate = useNavigate()
+  const { sendMentorSelection } = useChat()
   const [topic, setTopic] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedMentors, setGeneratedMentors] = useState<Mentor[]>([])
@@ -34,7 +36,7 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
     if (existingDynamicSessionId && existingMentors && isDynamic) {
       try {
         const mentors: Mentor[] = JSON.parse(existingMentors)
-        if (mentors.length > 0 && mentors.some(m => m.isDynamic)) {
+        if (mentors.length > 0 && mentors.some(m => m.isDynamic === true)) {
           console.log('🔄 组件加载时发现已有动态导师数据:')
           console.log('  sessionId:', existingDynamicSessionId)
           console.log('  topic:', existingTopic)
@@ -244,6 +246,10 @@ const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
       } catch (e) {
         console.warn('localStorage 持久化动态导师失败（不影响继续导航）:', e)
       }
+
+      // 立即发送导师选择信息到后端
+      console.log('📤 立即发送导师选择到后端')
+      sendMentorSelection(selectedMentors)
 
       console.log('🔄 开始跳转到聊天页面')
       onMentorsGenerated(selectedMentors, topic, sessionId)
