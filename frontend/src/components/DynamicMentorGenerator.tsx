@@ -11,15 +11,17 @@ import { useChat } from '../contexts/ChatContext'
 interface DynamicMentorGeneratorProps {
   onMentorsGenerated: (mentors: Mentor[], topic: string, sessionId: string) => void
   onClose: () => void
+  initialTopic?: string
 }
 
 const DynamicMentorGenerator: React.FC<DynamicMentorGeneratorProps> = ({
   onMentorsGenerated,
-  onClose
+  onClose,
+  initialTopic = ''
 }) => {
   const navigate = useNavigate()
   const { sendMentorSelection } = useChat()
-  const [topic, setTopic] = useState('')
+  const [topic, setTopic] = useState(initialTopic)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedMentors, setGeneratedMentors] = useState<Mentor[]>([])
   const [selectedMentorIds, setSelectedMentorIds] = useState<string[]>([])

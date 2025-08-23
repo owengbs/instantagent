@@ -6,6 +6,7 @@ import MultiAgentChatContainer from './components/MultiAgentChatContainer.tsx'
 import LoadingScreen from './components/LoadingScreen.tsx'
 import VoiceTest from './components/VoiceTest.tsx'
 import VoiceChatInput from './components/VoiceChatInput.tsx'
+import HomePage from './components/HomePage.tsx'
 import MentorSelection from './components/MentorSelection.tsx'
 import { DynamicMentorTest } from './components/DynamicMentorTest'
 import { MentorManagement } from './components/MentorManagement'
@@ -97,7 +98,8 @@ function App() {
 
           {/* 路由内容 */}
           <Routes>
-            <Route path="/" element={<MentorSelection />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/mentor-selection" element={<MentorSelection />} />
             <Route path="/chat" element={<ChatInterface />} />
             <Route path="/test" element={<DynamicMentorTest />} />
             <Route path="/management" element={<MentorManagement />} />

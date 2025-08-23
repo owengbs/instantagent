@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Users, Filter, Search, Zap } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Mentor } from '../types/mentor'
 import { DEFAULT_MENTORS } from '../config/mentors'
 import MentorCard from './MentorCard'
@@ -12,8 +12,12 @@ import { useChat } from '../contexts/ChatContext'
 
 const MentorSelection: React.FC = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { getEnabledMentors, loading: mentorsLoading, error: mentorsError } = useMentors()
   const { sendMentorSelection } = useChat()
+  
+  // 从路由状态中获取话题
+  const topicFromRoute = (location.state as any)?.topic || ''
   
   // 优先使用后端数据，如果失败则使用默认数据
   const [availableMentors, setAvailableMentors] = useState<Mentor[]>(DEFAULT_MENTORS)
@@ -24,6 +28,13 @@ const MentorSelection: React.FC = () => {
   const [filterStyle, setFilterStyle] = useState<string>('')
 
 
+
+  // 如果从首页传来了话题，自动打开动态导师生成器
+  useEffect(() => {
+    if (topicFromRoute) {
+      setShowDynamicGenerator(true)
+    }
+  }, [topicFromRoute])
 
   // 尝试从后端获取导师信息
   useEffect(() => {
@@ -276,6 +287,7 @@ const MentorSelection: React.FC = () => {
             <DynamicMentorGenerator
               onMentorsGenerated={handleDynamicMentorsGenerated}
               onClose={() => setShowDynamicGenerator(false)}
+              initialTopic={topicFromRoute}
             />
           )}
         </AnimatePresence>
